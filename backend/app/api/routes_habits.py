@@ -1,9 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
-
-# Updated import path based on your new app/db structure
+from fastapi import APIRouter, HTTPException, status, Query
 from app.db.schemas import HabitCreate, HabitLogCreate
+from app.db.supabase import supabase
 
-# Initialize the router
 router = APIRouter(
     prefix="/api/v1/habits",
     tags=["Habits"]
@@ -12,22 +10,17 @@ router = APIRouter(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_habit(habit: HabitCreate):
     """
-    Validates and creates a new habit.
-    Sahil: Plug in the Supabase db/supabase.py insertion logic here.
+    Validates and creates a new habit in the Supabase database.
     """
     try:
-        # Pydantic has already strictly validated 'habit' at this point.
         habit_dict = habit.model_dump()
         
-        # --- SAHIL'S DB LOGIC GOES HERE ---
-        # Example:
-        # response = supabase.table('habits').insert(habit_dict).execute()
-        # return response.data
-        # ----------------------------------
+        # Execute Supabase insert
+        response = supabase.table('habits').insert(habit_dict).execute()
         
         return {
-            "message": "Habit validated and ready for DB insertion",
-            "validated_data": habit_dict
+            "message": "Habit created successfully",
+            "data": response.data[0]
         }
     except Exception as e:
         raise HTTPException(
@@ -35,26 +28,50 @@ async def create_habit(habit: HabitCreate):
             detail=f"Failed to process habit creation: {str(e)}"
         )
 
+@router.get("/", status_code=status.HTTP_200_OK)
+async def get_all_habits(user_id: str = Query(..., description="UUID of the user to fetch habits for")):
+    """
+    Fetches all habits for a specific user.
+    """
+    try:
+        # Fetch habits filtering by the provided user_id
+        response = supabase.table('habits').select('*').eq('user_id', user_id).execute()
+        
+        return {
+            "message": "Habits retrieved successfully",
+            "data": response.data
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve habits: {str(e)}"
+        )
+
 @router.post("/log", status_code=status.HTTP_201_CREATED)
 async def log_habit(habit_log: HabitLogCreate):
     """
-    Validates and logs a daily habit entry.
-    Sahil: Plug in the Supabase db/supabase.py insertion logic here.
+    Validates and logs a daily habit entry to Supabase.
     """
     try:
+        # Convert date to string for JSON serialization
         log_dict = habit_log.model_dump()
+        log_dict['log_date'] = log_dict['log_date'].isoformat()
         
-        # --- SAHIL'S DB LOGIC GOES HERE ---
-        # Example:
-        # response = supabase.table('habit_logs').insert(log_dict).execute()
-        # return response.data
-        # ----------------------------------
+        # Execute Supabase insert
+        response = supabase.table('habit_logs').insert(log_dict).execute()
         
         return {
-            "message": "Habit log validated successfully",
-            "validated_data": log_dict
+            "message": "Habit log recorded successfully",
+            "data": response.data[0]
         }
     except Exception as e:
+        # Check for unique constraint violation (duplicate log for same day)
+        if "duplicate key value violates unique constraint" in str(e):
+             raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A log already exists for this habit on this date."
+            )
+             
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process habit log: {str(e)}"

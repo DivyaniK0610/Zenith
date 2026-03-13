@@ -9,6 +9,8 @@ class MetricType(str, Enum):
     NUMERIC = "numeric"
 
 class HabitCreate(BaseModel):
+    user_id: str = Field(..., description="UUID of the user")
+    macro_goal_id: Optional[str] = Field(None, description="UUID of the parent macro goal")
     title: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     metric_type: MetricType
@@ -29,7 +31,7 @@ class HabitCreate(BaseModel):
         return self
 
 class HabitLogCreate(BaseModel):
-    habit_id: int
+    habit_id: str = Field(..., description="UUID of the habit")
     log_date: date
     completed: Optional[bool] = None
     metric_value: Optional[float] = None
