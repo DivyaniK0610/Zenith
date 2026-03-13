@@ -1,1 +1,22 @@
-node_modules/\n.env\n__pycache__/\nvenv/
+# Python
+# Virtual environment folder
+venv/
+# Python cache
+__pycache__/
+
+# Node.js / Frontend
+# Dependency folder (very important to ignore)
+node_modules/
+# Build output folder
+dist/
+
+# Secrets
+# Ignore all .env files in any folder
+**/.env
+
+# Operating System files
+.DS_Store
+
+# IDE / Editor folders
+.vscode/
+.idea/
