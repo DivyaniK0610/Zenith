@@ -12,4 +12,5 @@ groq==0.9.0
 python-dotenv==1.0.1
 
 # Database (Future/Planned)
-# supabase==2.5.1
+supabase==2.5.1
+dotenv
