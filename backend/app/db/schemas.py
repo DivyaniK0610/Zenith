@@ -8,6 +8,7 @@ class MetricType(str, Enum):
     BOOLEAN = "boolean"
     NUMERIC = "numeric"
 
+
 class HabitCreate(BaseModel):
     user_id: str = Field(..., description="UUID of the user")
     macro_goal_id: Optional[str] = Field(None, description="UUID of the parent macro goal")
