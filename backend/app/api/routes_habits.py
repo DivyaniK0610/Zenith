@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from app.db.schemas import HabitCreate, HabitLogCreate
 from app.db.supabase import supabase
+# PHASE 3: Importing the new gamification engine
+from app.utils.gamification import process_gamification_logic
 
 router = APIRouter(
     prefix="/api/v1/habits",
@@ -14,8 +16,6 @@ async def create_habit(habit: HabitCreate):
     """
     try:
         habit_dict = habit.model_dump()
-        
-        # Execute Supabase insert
         response = supabase.table('habits').insert(habit_dict).execute()
         
         return {
@@ -34,7 +34,6 @@ async def get_all_habits(user_id: str = Query(..., description="UUID of the user
     Fetches all habits for a specific user.
     """
     try:
-        # Fetch habits filtering by the provided user_id
         response = supabase.table('habits').select('*').eq('user_id', user_id).execute()
         
         return {
@@ -50,29 +49,38 @@ async def get_all_habits(user_id: str = Query(..., description="UUID of the user
 @router.post("/log", status_code=status.HTTP_201_CREATED)
 async def log_habit(habit_log: HabitLogCreate):
     """
-    Validates and logs a daily habit entry to Supabase.
+    Logs a habit entry and triggers the gamification engine.
     """
     try:
-        # Convert date to string for JSON serialization
         log_dict = habit_log.model_dump()
         log_dict['log_date'] = log_dict['log_date'].isoformat()
         
-        # Execute Supabase insert
+        # A. Fetch user_id
+        habit_info = supabase.table('habits').select('user_id').eq('id', habit_log.habit_id).single().execute()
+        if not habit_info.data:
+            raise HTTPException(status_code=404, detail="Habit not found")
+        
+        user_id = habit_info.data['user_id']
+
+        # B. Insert the log
         response = supabase.table('habit_logs').insert(log_dict).execute()
         
-        return {
-            "message": "Habit log recorded successfully",
-            "data": response.data[0]
-        }
-    except Exception as e:
-        # Check for unique constraint violation (duplicate log for same day)
-        if "duplicate key value violates unique constraint" in str(e):
-             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A log already exists for this habit on this date."
-            )
-             
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process habit log: {str(e)}"
+        # C. TRIGGER THE GAMIFICATION (Matching the imported name)
+        game_stats = await process_gamification_logic(  # <--- Use the imported name here
+            habit_id=habit_log.habit_id,
+            user_id=user_id,
+            log_date=habit_log.log_date,
+            completed=habit_log.completed,
+            metric_value=habit_log.metric_value
         )
+        
+        return {
+            "message": "Habit logged and XP updated",
+            "data": response.data[0],
+            "gamification": game_stats 
+        }
+
+    except Exception as e:
+        if "duplicate key value" in str(e):
+             raise HTTPException(status_code=409, detail="Log already exists for this date.")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
