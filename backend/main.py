@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Updated import path based on your new app/api structure
 from app.api.routes_habits import router as habits_router
+from app.api.routes_chat import router as chat_router
+from app.api.routes_game import router as game_router
 
 app = FastAPI(
     title="Zenith API",
@@ -12,7 +12,7 @@ app = FastAPI(
 
 origins = [
     "http://localhost:3000",
-    "http://localhost:5173", 
+    "http://localhost:5173",
 ]
 
 app.add_middleware(
@@ -23,10 +23,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the modular routes
+from fastapi.exceptions import HTTPException, RequestValidationError
+from app.api.error_handlers import safe_http_exception_handler, unhandled_exception_handler
+
+app.add_exception_handler(HTTPException, safe_http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
 app.include_router(habits_router)
+app.include_router(chat_router)
+app.include_router(game_router)
 
 @app.get("/health")
 async def health_check():
-    """Basic health check to verify API status."""
     return {"status": "Zenith API is live"}
