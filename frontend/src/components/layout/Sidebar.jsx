@@ -108,9 +108,14 @@ export default function Sidebar() {
                 {isActive && (
                   <motion.div
                     initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    animate={{ scale: [1, 1.5, 1] }}
+                    transition={{ duration: 0.5, times: [0, 0.5, 1], ease: 'easeInOut' }}
                     className="absolute right-3 w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--color-primary)', opacity: 0.7 }}
+                    style={{
+                      background: 'var(--color-primary)',
+                      opacity: 0.7,
+                      boxShadow: '0 0 6px var(--color-primary)',
+                    }}
                   />
                 )}
               </div>

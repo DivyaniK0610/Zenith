@@ -6,23 +6,40 @@ import { useZenithSounds } from '../../hooks/useSound';
 
 function StreakBadge({ streak }) {
   if (!streak || streak < 2) return null;
-  const isHot = streak >= 7;
-  const isMild = streak >= 3;
+  const isLegendary = streak >= 30;
+  const isHot       = streak >= 7;
+  const isMild      = streak >= 3;
+  const flameSize   = isLegendary ? 12 : isHot ? 11 : 10;
+  const glowColor   = isLegendary ? '#ff6020' : isHot ? '#e08040' : 'var(--color-primary)';
+
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
       style={{
-        background: isHot
+        background: isLegendary
+          ? 'rgba(255,96,32,0.15)'
+          : isHot
           ? 'rgba(224,120,48,0.14)'
           : isMild
           ? 'rgba(184,115,51,0.1)'
           : 'rgba(58,50,40,0.6)',
-        color: isHot ? '#e08040' : isMild ? 'var(--color-primary)' : 'var(--color-text-3)',
-        border: `1px solid ${isHot ? 'rgba(224,120,48,0.25)' : 'rgba(184,115,51,0.15)'}`,
+        color: glowColor,
+        border: `1px solid ${isLegendary ? 'rgba(255,96,32,0.3)' : isHot ? 'rgba(224,120,48,0.25)' : 'rgba(184,115,51,0.15)'}`,
         letterSpacing: '0.01em',
       }}
     >
-      <Flame size={9} fill={isHot ? 'currentColor' : 'none'} strokeWidth={isHot ? 0 : 2} />
+      <Flame
+        size={flameSize}
+        fill={isHot ? 'currentColor' : 'none'}
+        strokeWidth={isHot ? 0 : 2}
+        style={{
+          filter: isLegendary
+            ? 'drop-shadow(0 0 4px rgba(255,96,32,0.8))'
+            : isHot
+            ? 'drop-shadow(0 0 2px rgba(224,120,48,0.6))'
+            : 'none',
+        }}
+      />
       {streak}d
     </span>
   );
@@ -178,7 +195,7 @@ export default function HabitCard({ habit, onAchievement }) {
                 <motion.div
                   key="empty"
                   exit={{ scale: 0, opacity: 0 }}
-                  className="w-3.5 h-3.5 rounded-md border-2"
+                  className="w-3.5 h-3.5 rounded-md border-2 habit-checkbox-idle"
                   style={{ borderColor: 'var(--color-stone-light)' }}
                 />
               )}

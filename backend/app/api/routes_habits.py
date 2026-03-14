@@ -86,3 +86,29 @@ async def log_habit(habit_log: HabitLogCreate):
         if "duplicate key value" in str(e):
             raise HTTPException(status_code=409, detail="Log already exists for this date.")
         raise HTTPException(status_code=500, detail=f"Failed to log habit: {str(e)}")
+    
+@router.get("/logs/today", status_code=status.HTTP_200_OK)
+async def get_today_logs(
+    user_id: str = Query(...),
+    date: str = Query(...)
+):
+    try:
+        habits_resp = supabase.table('habits').select('id').eq('user_id', user_id).execute()
+        habit_ids = [h['id'] for h in (habits_resp.data or [])]
+
+        if not habit_ids:
+            return {"message": "No logs found", "data": []}
+
+        logs_resp = (
+            supabase.table('habit_logs')
+            .select('habit_id, completed, metric_value, duration_logged')
+            .in_('habit_id', habit_ids)
+            .eq('log_date', date)
+            .execute()
+        )
+        return {"message": "Today's logs retrieved", "data": logs_resp.data or []}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch today's logs: {str(e)}"
+        )

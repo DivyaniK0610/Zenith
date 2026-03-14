@@ -9,7 +9,7 @@
   --color-surface-3:  #201c14;
 
   /* Amber accent — richer, less orange */
-  --color-primary:        #b87333;
+  --color-primary: #b07030;
   --color-primary-dim:    #8a5520;
   --color-primary-glow:   rgba(184,115,51,0.12);
   --color-primary-border: rgba(184,115,51,0.22);
@@ -246,4 +246,13 @@ body::before {
 .divider {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.75; }
+}
+
+.habit-checkbox-idle {
+  animation: breathe 2.8s ease-in-out infinite;
 }

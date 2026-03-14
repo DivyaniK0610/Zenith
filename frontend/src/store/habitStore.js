@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { fetchHabits, createHabit as apiCreateHabit, logHabitEntry } from '../api/habits';
 import apiClient from '../api/client';
+import { toast } from 'sonner';
 
 export const useHabitStore = create((set, get) => ({
   habits: [],
@@ -13,13 +14,36 @@ export const useHabitStore = create((set, get) => ({
   loadHabits: async (userId) => {
   set({ isLoading: true, error: null });
   try {
+    const today = new Date().toISOString().split('T')[0];
+
     const [habitsResponse, statsResponse] = await Promise.all([
       fetchHabits(userId),
       apiClient.get(`/api/v1/game/stats/${userId}`),
     ]);
+
+    const habits = habitsResponse.data || [];
+    const habitIds = habits.map(h => h.id);
+
+    // Fetch today's logs to restore completed state after refresh
+    let completedIds = new Set();
+    if (habitIds.length > 0) {
+      const logsResponse = await apiClient.get(`/api/v1/habits/logs/today`, {
+        params: { user_id: userId, date: today }
+      });
+      const todayLogs = logsResponse.data?.data || [];
+      todayLogs.forEach(log => {
+        const isDone =
+          log.completed === true ||
+          (log.metric_value !== null && log.metric_value > 0) ||
+          (log.duration_logged !== null && log.duration_logged > 0);
+        if (isDone) completedIds.add(log.habit_id);
+      });
+    }
+
     set({
-      habits: habitsResponse.data || [],
+      habits,
       userStats: statsResponse.data.data,
+      completedToday: completedIds,
       isLoading: false,
     });
   } catch (error) {
@@ -73,13 +97,27 @@ export const useHabitStore = create((set, get) => ({
             longest_streak: response.gamification.longest_streak,
           },
         });
+
+        const g = response.gamification;
+        if (g.leveled_up) {
+          toast(`⚡ Level ${g.level} unlocked — ${g.total_xp} XP total`, { duration: 4000 });
+        } else if (g.milestone_bonus > 0) {
+          toast(`🔥 ${g.current_streak}-day streak! +${g.xp_gained} XP`, { duration: 3500 });
+        } else {
+          toast(`+${g.xp_gained} XP — ${g.message}`, { duration: 2500 });
+        }
+
         return response.gamification;
       }
 
       return response;
     } catch (error) {
       if (error.response?.status === 409) {
-        // Already logged today — keep it marked complete, return null quietly
+        toast('Already logged today', {
+          icon: '📅',
+          duration: 2000,
+          style: { color: 'var(--color-text-3)' },
+        });
         return null;
       }
       // Real error: undo the optimistic update

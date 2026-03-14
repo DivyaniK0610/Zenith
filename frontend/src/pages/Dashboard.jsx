@@ -6,11 +6,10 @@ import AchievementOverlay from '../components/gamification/AchievementOverlay';
 import XPBar from '../components/gamification/XPBar';
 import StatsRow from '../components/dashboard/StatsRow';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, FlaskConical, ChevronDown } from 'lucide-react';
+import { Plus, Sparkles, ChevronDown } from 'lucide-react';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
-// ── Test panel ─────────────────────────────────────────
 const TEST_ACHIEVEMENTS = [
   {
     label: '⚡ Level Up overlay',
@@ -55,7 +54,6 @@ function TestPanel({ onTrigger }) {
       <AnimatePresence>
         {open && (
           <>
-            {/* Click outside to close */}
             <div
               className="fixed inset-0 z-20"
               onClick={() => setOpen(false)}
@@ -73,7 +71,6 @@ function TestPanel({ onTrigger }) {
                 boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(184,115,51,0.1)',
               }}
             >
-              {/* Header */}
               <div
                 className="px-3 py-2 border-b"
                 style={{ borderColor: 'var(--color-border)' }}
@@ -144,7 +141,7 @@ function EmptyState({ onAdd }) {
         whileHover={{ scale: 1.03, y: -1 }}
         whileTap={{ scale: 0.97 }}
         onClick={onAdd}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-white btn-primary"
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-white"
         style={{
           background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))',
           boxShadow: '0 4px 16px rgba(184,115,51,0.2)',
@@ -175,17 +172,47 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [achievement, setAchievement] = useState(null);
 
+  const pendingHabits   = habits.filter(h => !completedToday.has(h.id));
+  const completedHabits = habits.filter(h => completedToday.has(h.id));
+
   useEffect(() => { loadHabits(USER_ID); }, [loadHabits]);
 
-  const handleAchievement = useCallback((data) => setAchievement(data), []);
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+  e.key === 'n' &&
+  !e.metaKey &&
+  !e.ctrlKey &&
+  !e.altKey &&
+  document.activeElement.tagName !== 'INPUT' &&
+  document.activeElement.tagName !== 'TEXTAREA'
+      ) {
+        e.preventDefault();  // ← add this line
+        setIsModalOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleAchievement  = useCallback((data) => setAchievement(data), []);
   const dismissAchievement = useCallback(() => setAchievement(null), []);
 
   const completedCount = habits.filter(h => completedToday.has(h.id)).length;
-  const today = new Date();
-  const allDone = habits.length > 0 && completedCount === habits.length;
+  const today          = new Date();
+  const allDone        = habits.length > 0 && completedCount === habits.length;
 
   return (
-    <div className="space-y-4 pb-4 page-enter">
+    <motion.div
+      className="space-y-4 pb-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -224,6 +251,18 @@ export default function Dashboard() {
           >
             <Plus size={13} />
             Add Habit
+            <span style={{
+              fontSize: '9px',
+              opacity: 0.5,
+              background: 'rgba(255,255,255,0.07)',
+              padding: '1px 5px',
+              borderRadius: '4px',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.02em',
+              marginLeft: '2px',
+            }}>
+              N
+            </span>
           </motion.button>
         </div>
       </div>
@@ -288,14 +327,52 @@ export default function Dashboard() {
         ) : (
           <motion.div layout className="space-y-2">
             <AnimatePresence mode="popLayout">
-              {habits.map(habit => (
-                <HabitCard
+              {pendingHabits.map((habit, i) => (
+                <motion.div
                   key={habit.id}
-                  habit={habit}
-                  onAchievement={handleAchievement}
-                />
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <HabitCard habit={habit} onAchievement={handleAchievement} />
+                </motion.div>
               ))}
             </AnimatePresence>
+
+            {completedHabits.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div style={{
+                  height: '1px',
+                  background: 'var(--color-border)',
+                  margin: '12px 0 10px',
+                }} />
+                <div style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'var(--color-text-3)',
+                  marginBottom: '8px',
+                }}>
+                  Completed
+                </div>
+                <div className="space-y-2">
+                  <AnimatePresence mode="popLayout">
+                    {completedHabits.map(habit => (
+                      <HabitCard
+                        key={habit.id}
+                        habit={habit}
+                        onAchievement={handleAchievement}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </div>
@@ -306,6 +383,6 @@ export default function Dashboard() {
         userId={USER_ID}
       />
       <AchievementOverlay achievement={achievement} onClose={dismissAchievement} />
-    </div>
+    </motion.div>
   );
 }

@@ -1,8 +1,31 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
 
 const XP_PER_LEVEL = 100;
+
+function AnimatedNumber({ value }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const start     = display;
+    const end       = value;
+    const duration  = 800;
+    const startTime = performance.now();
+
+    const tick = (now) => {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased    = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(start + (end - start) * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+  }, [value]);
+
+  return <>{display}</>;
+}
 
 export default function XPBar({ xp = 0, level = 1 }) {
   const xpInLevel = xp % XP_PER_LEVEL;
@@ -75,7 +98,7 @@ export default function XPBar({ xp = 0, level = 1 }) {
                   fontWeight: 500,
                 }}
               >
-                {xpInLevel}
+                <AnimatedNumber value={xpInLevel} />
               </span>
               <span style={{ color: 'var(--color-text-3)', fontSize: '11px' }}>
                 / {XP_PER_LEVEL} XP
@@ -97,15 +120,7 @@ export default function XPBar({ xp = 0, level = 1 }) {
               animate={{ width: `${progress}%` }}
               transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
             >
-              {/* Shimmer */}
-              <motion.div
-                className="absolute inset-y-0 w-12 pointer-events-none"
-                style={{
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
-                }}
-                animate={{ x: ['-100%', '500%'] }}
-                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
-              />
+              
             </motion.div>
           </div>
 
@@ -121,7 +136,7 @@ export default function XPBar({ xp = 0, level = 1 }) {
                 fontFamily: 'var(--font-mono)',
               }}
             >
-              ↑ {xp} total
+              ↑ <AnimatedNumber value={xp} /> total
             </span>
           </div>
         </div>
