@@ -12,7 +12,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <div className="w-64 h-screen bg-surface border-r border-slate-700 p-6 flex flex-col">
+    <div className="w-64 h-screen bg-surface border-r border-slate-700 p-6 hidden md:flex flex-col">
       <div className="flex items-center gap-3 mb-10 text-primary">
         <Zap size={32} />
         <h1 className="text-2xl font-bold text-white tracking-tight">Zenith</h1>
