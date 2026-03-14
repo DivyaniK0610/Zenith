@@ -124,14 +124,17 @@ export default function StatsRow({ habits = [], userStats = null }) {
 
   return (
     <div className="grid grid-cols-4 gap-2">
-      {STATS.map((stat, i) => (
-        <StatCard
-          key={stat.key}
-          {...stat}
-          value={values[stat.key]}
-          delay={i * 0.06}
-        />
-      ))}
+      {STATS.map((stat, i) => {
+        const { key, ...statProps } = stat;
+        return (
+          <StatCard
+            key={key}
+            {...statProps}
+            value={values[key]}
+            delay={i * 0.06}
+          />
+        );
+      })}
     </div>
   );
 }

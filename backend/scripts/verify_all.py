@@ -131,7 +131,7 @@ async def test_analytics():
 
         daily = await get_daily_completion_rate(TEST_USER_ID, days=7)
         check("get_daily_completion_rate returns list", isinstance(daily, list))
-        check("daily rate has 7 entries",               len(daily) == 7, f"got {len(daily)}")
+        check("daily rate returns days+1 entries (inclusive)", len(daily) == 8, f"got {len(daily)}")
 
         if daily:
             first = daily[0]

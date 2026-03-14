@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Flame, Star } from 'lucide-react';
 import { useZenithSounds } from '../../hooks/useSound';
+import { createPortal } from 'react-dom';
 
 function Particle({ delay }) {
   const angle = Math.random() * 360;
@@ -139,30 +140,53 @@ export default function AchievementOverlay({ achievement, onClose }) {
     return () => clearTimeout(t);
   }, [achievement, onClose]);
 
-  return (
-    <AnimatePresence>
-      {achievement && (
-        <>
-          <motion.div className="fixed inset-0 z-50"
-            style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(16px)' }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose} />
-          <motion.div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xs px-4"
+  return createPortal(
+  <AnimatePresence>
+    {achievement && (
+      <>
+        <motion.div
+          className="fixed inset-0 z-50"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(16px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        />
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 51,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px 16px',
+          }}
+        >
+          <motion.div
             initial={{ scale: 0.7, opacity: 0, y: 40 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: -20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}>
-            <div className="rounded-3xl overflow-hidden border shadow-2xl relative"
-              style={{ background: 'var(--color-surface)', borderColor: 'rgba(58,52,46,0.8)' }}>
-              <div className="absolute inset-x-0 top-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(201,129,58,0.3), transparent)' }} />
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={{ width: '100%', maxWidth: '320px' }}
+          >
+            <div
+              className="rounded-3xl overflow-hidden border shadow-2xl relative"
+              style={{ background: 'var(--color-surface)', borderColor: 'rgba(58,52,46,0.8)' }}
+            >
+              <div
+                className="absolute inset-x-0 top-0 h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(201,129,58,0.3), transparent)' }}
+              />
               {achievement.type === 'level_up'
                 ? <LevelUpContent data={achievement} onClose={onClose} />
                 : <StreakContent  data={achievement} onClose={onClose} />}
             </div>
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
+        </div>
+      </>
+    )}
+  </AnimatePresence>,
+  document.body
+);
 }

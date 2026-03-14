@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { fetchHabits, createHabit as apiCreateHabit, logHabitEntry } from '../api/habits';
+import apiClient from '../api/client';
 
 export const useHabitStore = create((set, get) => ({
   habits: [],
@@ -10,14 +11,21 @@ export const useHabitStore = create((set, get) => ({
   completedToday: new Set(),
 
   loadHabits: async (userId) => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetchHabits(userId);
-      set({ habits: response.data || [], isLoading: false });
-    } catch (error) {
-      set({ error: error.message || 'Failed to fetch habits', isLoading: false });
-    }
-  },
+  set({ isLoading: true, error: null });
+  try {
+    const [habitsResponse, statsResponse] = await Promise.all([
+      fetchHabits(userId),
+      apiClient.get(`/api/v1/game/stats/${userId}`),
+    ]);
+    set({
+      habits: habitsResponse.data || [],
+      userStats: statsResponse.data.data,
+      isLoading: false,
+    });
+  } catch (error) {
+    set({ error: error.message || 'Failed to fetch habits', isLoading: false });
+  }
+},
 
   addHabit: async (habitData) => {
     try {

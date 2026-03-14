@@ -192,7 +192,7 @@ export default function HabitCard({ habit, onAchievement }) {
                 className="text-sm font-medium leading-tight"
                 style={{
                   color: isCompleted ? 'rgba(111,207,138,0.5)' : 'var(--color-text-1)',
-                  textDecoration: isCompleted ? 'line-through' : 'none',
+                  textDecorationLine: isCompleted ? 'line-through' : 'none',
                   textDecorationColor: 'rgba(111,207,138,0.35)',
                   transition: 'color 0.3s',
                 }}

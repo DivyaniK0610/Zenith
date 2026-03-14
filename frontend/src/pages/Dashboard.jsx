@@ -5,76 +5,107 @@ import AddHabitModal from '../components/dashboard/AddHabitModal';
 import AchievementOverlay from '../components/gamification/AchievementOverlay';
 import XPBar from '../components/gamification/XPBar';
 import StatsRow from '../components/dashboard/StatsRow';
-import { Plus, Sparkles, FlaskConical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Sparkles, FlaskConical, ChevronDown } from 'lucide-react';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
 // ── Test panel ─────────────────────────────────────────
 const TEST_ACHIEVEMENTS = [
   {
-    label: '🏆 Level Up',
+    label: '⚡ Level Up overlay',
     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' },
   },
   {
-    label: '🔥 7-Day Streak',
+    label: '🔥 7-day streak reward',
     data: { type: 'streak', current_streak: 7, xp_gained: 60, milestone_bonus: 50, message: 'Consistency is the only cheat code.' },
   },
   {
-    label: '🔥 30-Day Streak',
+    label: '🔥 30-day streak reward',
     data: { type: 'streak', current_streak: 30, xp_gained: 210, milestone_bonus: 200, message: 'On fire. 30 days straight.' },
   },
 ];
 
 function TestPanel({ onTrigger }) {
   const [open, setOpen] = useState(false);
+
   return (
     <div className="relative">
-      <button
+      <motion.button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.96 }}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
         style={{
-          background: 'rgba(139,92,246,0.08)',
-          color: '#a78bfa',
-          borderColor: 'rgba(139,92,246,0.2)',
-          letterSpacing: '0.01em',
+          background: open ? 'rgba(184,115,51,0.15)' : 'rgba(184,115,51,0.08)',
+          color: 'var(--color-primary)',
+          borderColor: open ? 'rgba(184,115,51,0.4)' : 'var(--color-primary-border)',
         }}
       >
-        <FlaskConical size={11} />
-        Test
-      </button>
+        <Sparkles size={11} />
+        Demo
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={10} />
+        </motion.div>
+      </motion.button>
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1.5 rounded-xl border shadow-2xl z-30 overflow-hidden"
-            style={{
-              background: 'var(--color-surface-2)',
-              borderColor: 'var(--color-border)',
-              minWidth: 152,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
-          >
-            {TEST_ACHIEVEMENTS.map(({ label, data }, i) => (
-              <button
-                key={label}
-                onClick={() => { onTrigger(data); setOpen(false); }}
-                className="w-full text-left px-3 py-2 text-xs font-medium transition-colors"
-                style={{
-                  color: 'var(--color-text-2)',
-                  borderBottom: i < TEST_ACHIEVEMENTS.length - 1 ? '1px solid var(--color-border)' : 'none',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          <>
+            {/* Click outside to close */}
+            <div
+              className="fixed inset-0 z-20"
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -6 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute right-0 top-full mt-2 rounded-xl border overflow-hidden z-30"
+              style={{
+                background: 'var(--color-surface-2)',
+                borderColor: 'var(--color-primary-border)',
+                minWidth: 200,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(184,115,51,0.1)',
+              }}
+            >
+              {/* Header */}
+              <div
+                className="px-3 py-2 border-b"
+                style={{ borderColor: 'var(--color-border)' }}
               >
-                {label}
-              </button>
-            ))}
-          </motion.div>
+                <span style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-3)' }}>
+                  Feature demos
+                </span>
+              </div>
+
+              {TEST_ACHIEVEMENTS.map(({ label, data }, i) => (
+                <motion.button
+                  key={label}
+                  onClick={() => { onTrigger(data); setOpen(false); }}
+                  whileHover={{ x: 3 }}
+                  transition={{ duration: 0.1 }}
+                  className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 transition-colors"
+                  style={{
+                    color: 'var(--color-text-2)',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    borderBottom: i < TEST_ACHIEVEMENTS.length - 1 ? '1px solid var(--color-border)' : 'none',
+                    background: 'transparent',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,115,51,0.07)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ fontSize: '13px' }}>{label.split(' ')[0]}</span>
+                  <span>{label.split(' ').slice(1).join(' ')}</span>
+                </motion.button>
+              ))}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

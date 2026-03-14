@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Query
 from app.db.schemas import HabitCreate, HabitLogCreate
 from app.db.supabase import supabase
 # PHASE 3: Importing the new gamification engine
-from app.utils.gamification import process_gamification_logic
+from app.services.gamification import process_habit_log
 
 router = APIRouter(
     prefix="/api/v1/habits",
@@ -66,13 +66,13 @@ async def log_habit(habit_log: HabitLogCreate):
         response = supabase.table('habit_logs').insert(log_dict).execute()
         
         # C. TRIGGER THE GAMIFICATION (Matching the imported name)
-        game_stats = await process_gamification_logic(  # <--- Use the imported name here
-            habit_id=habit_log.habit_id,
-            user_id=user_id,
-            log_date=habit_log.log_date,
-            completed=habit_log.completed,
-            metric_value=habit_log.metric_value
-        )
+        game_stats = await process_habit_log(
+        habit_id=str(habit_log.habit_id),
+        user_id=user_id,
+        log_date=habit_log.log_date,
+        completed=habit_log.completed,
+        metric_value=habit_log.metric_value
+    )
         
         return {
             "message": "Habit logged and XP updated",
@@ -80,7 +80,9 @@ async def log_habit(habit_log: HabitLogCreate):
             "gamification": game_stats 
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         if "duplicate key value" in str(e):
-             raise HTTPException(status_code=409, detail="Log already exists for this date.")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+            raise HTTPException(status_code=409, detail="Log already exists for this date.")
+        raise HTTPException(status_code=500, detail=f"Failed to log habit: {str(e)}")
