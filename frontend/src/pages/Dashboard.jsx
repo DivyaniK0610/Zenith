@@ -1,89 +1,176 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useHabitStore } from '../store/habitStore';
 import HabitCard from '../components/dashboard/HabitCard';
 import AddHabitModal from '../components/dashboard/AddHabitModal';
-import { Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
+import AchievementOverlay from '../components/gamification/AchievementOverlay';
+import XPBar from '../components/gamification/XPBar';
+import StatsRow from '../components/dashboard/StatsRow';
+import { Plus, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Replace with a valid UUID from your Supabase database 
-const USER_ID = "741601ad-1b7c-477e-8be0-c76363f6ebda"; 
+const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
+
+function EmptyState({ onAdd }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center py-20 text-center"
+    >
+      <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mb-5">
+        <Sparkles className="w-7 h-7 text-slate-500" />
+      </div>
+      <h3 className="text-lg font-semibold text-white mb-2">No habits yet</h3>
+      <p className="text-slate-500 text-sm max-w-xs mb-7 leading-relaxed">
+        Start tracking your first habit to build streaks, earn XP, and level up.
+      </p>
+      <motion.button
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onAdd}
+        className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-blue-500 transition-colors"
+      >
+        <Plus size={16} />
+        Create your first habit
+      </motion.button>
+    </motion.div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="h-24 bg-surface rounded-2xl border border-slate-700/50 animate-pulse overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/2 to-transparent animate-shimmer" />
+    </div>
+  );
+}
+
+function DateHeader() {
+  const today = new Date();
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+  return (
+    <div>
+      <motion.h1
+        className="text-3xl font-black text-white tracking-tight mb-0.5"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {dayName}
+      </motion.h1>
+      <motion.p
+        className="text-slate-500 text-sm font-medium"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+      >
+        {dateStr}
+      </motion.p>
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const { habits, isLoading, error, loadHabits } = useHabitStore();
+  const { habits, isLoading, error, loadHabits, userStats, completedToday } = useHabitStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [achievement, setAchievement] = useState(null);
 
   useEffect(() => {
     loadHabits(USER_ID);
   }, [loadHabits]);
 
-  return (
-    <div className="w-full h-full space-y-8 pb-20">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight text-white mb-2">Dashboard</h1>
-          <p className="text-slate-400">Track your daily progress and build momentum.</p>
-        </div>
-        <div className="text-right bg-surface px-6 py-3 rounded-2xl border border-slate-700">
-            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Current Level</p>
-            <p className="text-2xl font-mono text-primary font-bold">XP: 1,250</p>
-        </div>
-      </div>
+  const handleAchievement = useCallback((data) => {
+    setAchievement(data);
+  }, []);
 
-      {/* Habits Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-200">Today's Habits</h2>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+  const dismissAchievement = useCallback(() => {
+    setAchievement(null);
+  }, []);
+
+  const completedCount = habits.filter((h) => completedToday.has(h.id)).length;
+
+  return (
+    <div className="w-full min-h-full space-y-6 pb-20">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-4">
+        <DateHeader />
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-xl font-medium transition-colors border border-primary/20 hover:border-primary"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl font-semibold text-sm border border-primary/20 hover:border-primary transition-all"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           <span>Add Habit</span>
         </motion.button>
       </div>
 
-      {/* Habits Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-           {[1, 2, 3].map(i => (
-             <div key={i} className="h-28 bg-surface rounded-2xl border border-slate-700 animate-pulse"></div>
-           ))}
-        </div>
-      ) : error ? (
-        <div className="p-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl">
-          Error: {error}
-        </div>
-      ) : habits.length === 0 ? (
-        <div className="p-12 bg-surface rounded-3xl border border-dashed border-slate-700 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4">
-            <Plus className="text-slate-400 w-8 h-8" />
-          </div>
-          <h3 className="text-lg font-medium text-white mb-2">No habits tracked yet</h3>
-          <p className="text-slate-400 max-w-sm mb-6">Create your first habit to start building your streak and earning XP.</p>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-primary/20"
-          >
-            Create Habit
-          </button>
-        </div>
-      ) : (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-        >
-          {habits.map((habit) => (
-            <HabitCard key={habit.id} habit={habit} />
-          ))}
-        </motion.div>
-      )}
+      {/* XP Bar */}
+      <XPBar
+        xp={userStats?.xp || 0}
+        level={userStats?.level || 1}
+      />
 
-      <AddHabitModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      {/* Stats row */}
+      <StatsRow habits={habits} userStats={userStats} />
+
+      {/* Habits section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-slate-300">
+            Today's Habits
+          </h2>
+          {habits.length > 0 && !isLoading && (
+            <motion.span
+              key={completedCount}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-xs text-slate-500 font-medium tabular-nums"
+            >
+              {completedCount} / {habits.length} done
+            </motion.span>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : error ? (
+          <div className="p-5 bg-rose-500/8 border border-rose-500/20 text-rose-400 rounded-2xl text-sm">
+            {error}
+          </div>
+        ) : habits.length === 0 ? (
+          <EmptyState onAdd={() => setIsModalOpen(true)} />
+        ) : (
+          <motion.div
+            layout
+            className="grid gap-3 md:grid-cols-2"
+          >
+            <AnimatePresence mode="popLayout">
+              {habits.map((habit) => (
+                <HabitCard
+                  key={habit.id}
+                  habit={habit}
+                  onAchievement={handleAchievement}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <AddHabitModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         userId={USER_ID}
+      />
+
+      <AchievementOverlay
+        achievement={achievement}
+        onClose={dismissAchievement}
       />
     </div>
   );
