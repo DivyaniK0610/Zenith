@@ -24,32 +24,58 @@ export default function App() {
     verify();
   }, []);
 
+  const bannerStyles = {
+    connected: { bg: 'rgba(82,168,115,0.08)', color: '#6fcf8a',  border: 'rgba(82,168,115,0.15)'  },
+    error:     { bg: 'rgba(220,60,60,0.08)',  color: '#f87171',  border: 'rgba(220,60,60,0.15)'   },
+    checking:  { bg: 'rgba(184,115,51,0.08)', color: 'var(--color-primary)', border: 'rgba(184,115,51,0.15)' },
+  };
+
+  const s = bannerStyles[backendStatus] || bannerStyles.checking;
+
   return (
     <Router>
-      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-background)' }}>
-        {/* Desktop sidebar — hidden on mobile */}
+      <div
+        className="flex h-screen overflow-hidden"
+        style={{ background: 'var(--color-background)' }}
+      >
         <Sidebar />
 
-        {/* Main area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Status banner */}
-          <div className={`w-full px-4 py-2 text-xs font-semibold flex items-center justify-center gap-2 flex-shrink-0 ${
-            backendStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-400' :
-            backendStatus === 'error'     ? 'bg-rose-500/10 text-rose-400' :
-                                            'bg-amber-500/10 text-amber-400'
-          }`}>
-            <Activity size={13} className={backendStatus === 'checking' ? 'animate-pulse' : ''} />
-            {backendStatus === 'connected' && 'Backend Connected'}
-            {backendStatus === 'error'     && 'Backend Disconnected — start FastAPI on port 8000'}
-            {backendStatus === 'checking'  && 'Connecting…'}
+          <div
+            className="w-full px-4 py-1.5 flex items-center justify-center gap-2 flex-shrink-0"
+            style={{
+              background: s.bg,
+              borderBottom: `1px solid ${s.border}`,
+            }}
+          >
+            <Activity
+              size={10}
+              style={{
+                color: s.color,
+                animation: backendStatus === 'checking' ? 'pulse 1.5s ease-in-out infinite' : 'none',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: s.color,
+              }}
+            >
+              {backendStatus === 'connected' && 'Backend Connected'}
+              {backendStatus === 'error'     && 'Backend Disconnected — start FastAPI on port 8000'}
+              {backendStatus === 'checking'  && 'Connecting…'}
+            </span>
           </div>
 
-          {/* Scrollable page content */}
+          {/* Page content */}
           <main className="flex-1 overflow-y-auto">
-            {/* Extra bottom padding on mobile for nav bar */}
-            <div className="px-4 pt-6 pb-28 md:px-8 md:pb-10 max-w-3xl mx-auto w-full">
+            <div className="px-5 pt-7 pb-28 md:px-8 md:pb-12 max-w-2xl mx-auto w-full">
               <Routes>
-                <Route path="/"         element={<Dashboard />} />
+                <Route path="/"          element={<Dashboard />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/coach"     element={<AICoach />} />
                 <Route path="/timer"     element={<Timer />} />
@@ -58,7 +84,6 @@ export default function App() {
           </main>
         </div>
 
-        {/* Mobile bottom nav — visible only on mobile */}
         <MobileNav />
       </div>
     </Router>

@@ -13,11 +13,12 @@ const navItems = [
 export default function MobileNav() {
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-center justify-around px-2 py-2 border-t"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-center justify-around px-1 pt-2 pb-safe"
       style={{
-        background: 'rgba(22,19,16,0.95)',
-        backdropFilter: 'blur(20px)',
-        borderColor: 'rgba(58,52,46,0.8)',
+        background: 'rgba(13,11,8,0.92)',
+        backdropFilter: 'blur(24px)',
+        borderTop: '1px solid var(--color-border)',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
       }}
     >
       {navItems.map((item) => (
@@ -33,18 +34,27 @@ export default function MobileNav() {
                 <motion.div
                   layoutId="mobile-active-bg"
                   className="absolute inset-0 rounded-xl"
-                  style={{ background: 'rgba(201,129,58,0.12)' }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  style={{ background: 'rgba(184,115,51,0.1)' }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                 />
               )}
+
               <item.icon
-                size={20}
+                size={18}
                 className="relative z-10 transition-colors"
-                style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-muted)' }}
+                style={{
+                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-3)',
+                }}
               />
               <span
-                className="relative z-10 text-[10px] font-semibold tracking-wide transition-colors"
-                style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-muted)' }}
+                className="relative z-10 transition-colors"
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-3)',
+                }}
               >
                 {item.name}
               </span>

@@ -1,38 +1,249 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
 @theme {
-  /* Earthy warm palette — toned down, less saturated */
-  --color-background: #0f0d0b;
-  --color-surface:    #181512;
-  --color-primary:    #a86d35;   /* pulled back amber — less orange, more brown */
+  /* ── Core palette ─────────────────────────────────── */
+  --color-background: #0c0a08;
+  --color-surface:    #131109;
+  --color-surface-2:  #1a1610;
+  --color-surface-3:  #201c14;
 
-  /* Extended palette */
-  --color-amber:       #a86d35;
-  --color-amber-dim:   #7a4e22;
-  --color-stone:       #252118;   /* card backgrounds / inputs */
-  --color-stone-mid:   #332d25;   /* borders */
-  --color-stone-light: #4e4640;   /* muted borders */
-  --color-warm-white:  #ede6dc;   /* slightly less stark than pure white */
-  --color-muted:       #6b6057;   /* secondary text */
+  /* Amber accent — richer, less orange */
+  --color-primary:        #b87333;
+  --color-primary-dim:    #8a5520;
+  --color-primary-glow:   rgba(184,115,51,0.12);
+  --color-primary-border: rgba(184,115,51,0.22);
+
+  /* Extended earthy tones */
+  --color-stone:       #201c14;
+  --color-stone-mid:   #2c261a;
+  --color-stone-light: #3d3628;
+  --color-stone-hover: #262013;
+
+  /* Text */
+  --color-warm-white: #f0e8d8;
+  --color-text-1:     #e8dece;
+  --color-text-2:     #a09080;
+  --color-text-3:     #6a5e50;
+  --color-muted:      #6a5e50;
+
+  /* Semantic accents — each stat gets its own */
+  --color-streak:  #e07830;
+  --color-habits:  #52a873;
+  --color-best:    #c9a43a;
+  --color-level:   #b87333;
+
+  /* Borders */
+  --color-border:       rgba(255,255,255,0.05);
+  --color-border-hover: rgba(255,255,255,0.09);
+
+  /* Typography */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'DM Mono', 'Fira Code', monospace;
 }
 
-/* ─── Base ─────────────────────────────────────────── */
+/* ── Reset ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-
 html { -webkit-tap-highlight-color: transparent; }
 
+/* ── Base ───────────────────────────────────────────── */
 body {
   background-color: var(--color-background);
-  color: var(--color-warm-white);
+  color: var(--color-text-1);
   margin: 0;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-stone-mid); border-radius: 99px; }
+/* ── Grain overlay on body ──────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.022;
+}
 
-/* ─── Selection ─────────────────────────────────────── */
-::selection { background: rgba(168,109,53,0.25); }
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar       { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-stone-light); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-3); }
+
+/* ── Selection ──────────────────────────────────────── */
+::selection { background: rgba(184,115,51,0.22); color: var(--color-warm-white); }
+
+/* ── Typography scale ───────────────────────────────── */
+.text-display {
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--color-warm-white);
+}
+
+.text-heading {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-warm-white);
+}
+
+.text-subheading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+
+.text-body    { font-size: 13px; font-weight: 400; color: var(--color-text-2); }
+.text-caption { font-size: 11px; font-weight: 400; color: var(--color-text-3); }
+.text-mono    { font-family: var(--font-mono); font-size: 12px; }
+
+/* ── Surface cards ──────────────────────────────────── */
+.card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset-x: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  pointer-events: none;
+}
+
+/* ── Habit card accent states ───────────────────────── */
+.habit-card-accent::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--color-primary);
+  opacity: 0.7;
+}
+
+.habit-card-accent.completed::after {
+  background: var(--color-habits);
+}
+
+/* ── Button base ────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dim));
+  color: var(--color-warm-white);
+  border-color: rgba(184,115,51,0.3);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(184,115,51,0.15);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #c8853d, var(--color-primary));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 6px 20px rgba(184,115,51,0.22);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: var(--color-primary-glow);
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}
+.btn-ghost:hover {
+  background: rgba(184,115,51,0.18);
+  border-color: rgba(184,115,51,0.32);
+}
+
+/* ── XP bar shimmer ─────────────────────────────────── */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(400%); }
+}
+
+.xp-shimmer {
+  position: absolute;
+  inset-y: 0;
+  width: 25%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  animation: shimmer 2.8s ease-in-out infinite;
+}
+
+/* ── Achievement overlay particles ─────────────────── */
+@keyframes particleFly {
+  from { transform: translate(0,0) scale(1); opacity: 1; }
+  to   { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+
+/* ── Stat card number pulse ─────────────────────────── */
+@keyframes numPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+
+/* ── Checkbox pop ───────────────────────────────────── */
+@keyframes checkPop {
+  0%   { transform: scale(0) rotate(-90deg); }
+  60%  { transform: scale(1.18) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* ── Page fade in ───────────────────────────────────── */
+@keyframes pageFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: pageFadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Glow pulse for level up ────────────────────────── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(184,115,51,0.2); }
+  50%       { box-shadow: 0 0 40px rgba(184,115,51,0.45); }
+}
+
+/* ── Sidebar micro-line ─────────────────────────────── */
+.nav-active-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 18px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-dim));
+}
+
+/* ── Divider ────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+}
