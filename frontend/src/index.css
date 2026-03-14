@@ -1,15 +1,38 @@
 @import "tailwindcss";
 
-/* Define your custom colors here instead of tailwind.config.js */
 @theme {
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-primary: #3b82f6;
+  /* Earthy warm palette — toned down, less saturated */
+  --color-background: #0f0d0b;
+  --color-surface:    #181512;
+  --color-primary:    #a86d35;   /* pulled back amber — less orange, more brown */
+
+  /* Extended palette */
+  --color-amber:       #a86d35;
+  --color-amber-dim:   #7a4e22;
+  --color-stone:       #252118;   /* card backgrounds / inputs */
+  --color-stone-mid:   #332d25;   /* borders */
+  --color-stone-light: #4e4640;   /* muted borders */
+  --color-warm-white:  #ede6dc;   /* slightly less stark than pure white */
+  --color-muted:       #6b6057;   /* secondary text */
 }
+
+/* ─── Base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-tap-highlight-color: transparent; }
 
 body {
   background-color: var(--color-background);
-  color: #f8fafc;
+  color: var(--color-warm-white);
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* ─── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-stone-mid); border-radius: 99px; }
+
+/* ─── Selection ─────────────────────────────────────── */
+::selection { background: rgba(168,109,53,0.25); }

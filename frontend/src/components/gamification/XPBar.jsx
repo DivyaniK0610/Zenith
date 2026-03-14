@@ -5,60 +5,53 @@ import { Zap, TrendingUp } from 'lucide-react';
 const XP_PER_LEVEL = 100;
 
 export default function XPBar({ xp = 0, level = 1 }) {
-  const xpInCurrentLevel = xp % XP_PER_LEVEL;
-  const progress = (xpInCurrentLevel / XP_PER_LEVEL) * 100;
+  const xpInLevel = xp % XP_PER_LEVEL;
+  const progress  = (xpInLevel / XP_PER_LEVEL) * 100;
 
   return (
-    <div className="bg-surface border border-slate-700/80 rounded-2xl p-5 relative overflow-hidden">
-      {/* Subtle bg glow */}
-      <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
+    <div className="relative rounded-2xl p-5 overflow-hidden border"
+      style={{ background: 'var(--color-surface)', borderColor: 'rgba(58,52,46,0.8)' }}>
+      <div className="absolute right-0 top-0 w-40 h-40 rounded-full blur-3xl pointer-events-none"
+        style={{ background: 'rgba(201,129,58,0.06)' }} />
 
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Zap className="w-4 h-4 text-white" fill="white" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #c9813a, #8a4e1a)' }}>
+              <Zap className="w-5 h-5 text-white" fill="white" />
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">Level</div>
-              <div className="text-xl font-black text-white leading-none">{level}</div>
+              <div className="text-xs font-bold tracking-widest uppercase mb-0.5"
+                style={{ color: 'var(--color-muted)' }}>Level</div>
+              <div className="text-2xl font-black leading-none" style={{ color: 'var(--color-warm-white)' }}>{level}</div>
             </div>
           </div>
-
           <div className="text-right">
-            <div className="text-xs text-slate-500 font-medium">XP</div>
-            <div className="text-sm font-bold text-slate-300">
-              <span className="text-blue-400">{xpInCurrentLevel}</span>
-              <span className="text-slate-600"> / {XP_PER_LEVEL}</span>
+            <div className="text-xs font-semibold tracking-wider uppercase mb-0.5" style={{ color: 'var(--color-muted)' }}>XP</div>
+            <div className="text-sm font-bold">
+              <span style={{ color: 'var(--color-primary)' }}>{xpInLevel}</span>
+              <span style={{ color: 'var(--color-stone-light)' }}> / {XP_PER_LEVEL}</span>
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full relative"
-            style={{
-              background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-            }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-          >
-            {/* Shimmer */}
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-stone)' }}>
+          <motion.div className="h-full rounded-full relative overflow-hidden"
+            style={{ background: 'linear-gradient(90deg, #c9813a, #e8a45a)' }}
+            initial={{ width: 0 }} animate={{ width: `${progress}%` }}
+            transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}>
+            <motion.div className="absolute inset-0"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)' }}
               animate={{ x: ['-100%', '200%'] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
-            />
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }} />
           </motion.div>
         </div>
 
         <div className="flex justify-between mt-1.5">
-          <span className="text-xs text-slate-600">{Math.round(progress)}% to next level</span>
-          <div className="flex items-center gap-1 text-xs text-emerald-400">
-            <TrendingUp size={10} />
-            <span>{xp} total XP</span>
+          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{Math.round(progress)}% to next level</span>
+          <div className="flex items-center gap-1 text-xs" style={{ color: '#6fcf8a' }}>
+            <TrendingUp size={10} /><span>{xp} total XP</span>
           </div>
         </div>
       </div>
