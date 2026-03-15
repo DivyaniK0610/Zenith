@@ -295,7 +295,7 @@ export default function ZenithDateTimePicker({ onConfirm, onCancel }) {
               border: tab === t ? '1px solid rgba(184,115,51,0.3)' : '1px solid transparent',
             }}
           >
-            {t === 'date' ? '📅 Date' : '⏰ Time'}
+            {t === 'date' ? 'Date' : 'Time'}
           </button>
         ))}
       </div>
