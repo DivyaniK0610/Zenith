@@ -3,6 +3,8 @@ from app.db.schemas import HabitCreate, HabitLogCreate
 from app.db.supabase import supabase
 # PHASE 3: Importing the new gamification engine
 from app.services.gamification import process_habit_log
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(
     prefix="/api/v1/habits",
@@ -34,7 +36,13 @@ async def get_all_habits(user_id: str = Query(..., description="UUID of the user
     Fetches all habits for a specific user.
     """
     try:
-        response = supabase.table('habits').select('*').eq('user_id', user_id).execute()
+        response = (
+            supabase.table('habits')
+            .select('*')
+            .eq('user_id', user_id)
+            .neq('status', 'archived')
+            .execute()
+        )
         
         return {
             "message": "Habits retrieved successfully",
@@ -111,4 +119,50 @@ async def get_today_logs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch today's logs: {str(e)}"
+        )
+
+@router.delete("/{habit_id}", status_code=status.HTTP_200_OK)
+async def delete_habit(habit_id: str):
+    try:
+        # Delete logs first (foreign key constraint)
+        supabase.table('habit_logs').delete().eq('habit_id', habit_id).execute()
+        supabase.table('habits').delete().eq('id', habit_id).execute()
+        return {"message": "Habit deleted successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete habit: {str(e)}"
+        )
+    
+class HabitStatusUpdate(BaseModel):
+    status: Optional[str] = None  # 'archived' | 'paused' | 'active'
+
+@router.patch("/{habit_id}", status_code=status.HTTP_200_OK)
+async def update_habit_status(habit_id: str, update: HabitStatusUpdate):
+    try:
+        response = supabase.table('habits').update(
+            {"status": update.status}
+        ).eq('id', habit_id).execute()
+        return {"message": "Habit updated", "data": response.data[0] if response.data else {}}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update habit: {str(e)}"
+        )
+    
+@router.get("/archived", status_code=status.HTTP_200_OK)
+async def get_archived_habits(user_id: str = Query(...)):
+    try:
+        response = (
+            supabase.table('habits')
+            .select('*')
+            .eq('user_id', user_id)
+            .eq('status', 'archived')
+            .execute()
+        )
+        return {"message": "Archived habits retrieved", "data": response.data or []}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch archived habits: {str(e)}"
         )

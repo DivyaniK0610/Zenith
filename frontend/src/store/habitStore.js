@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchHabits, createHabit as apiCreateHabit, logHabitEntry } from '../api/habits';
+import { fetchHabits, createHabit as apiCreateHabit, logHabitEntry, deleteHabit } from '../api/habits';
 import apiClient from '../api/client';
 import { toast } from 'sonner';
 
@@ -70,6 +70,80 @@ export const useHabitStore = create((set, get) => ({
       return { completedToday: next };
     });
   },
+
+  removeHabit: async (habitId) => {
+  try {
+    await deleteHabit(habitId);
+    set((state) => ({
+      habits: state.habits.filter(h => h.id !== habitId),
+      completedToday: (() => {
+        const next = new Set(state.completedToday);
+        next.delete(habitId);
+        return next;
+      })(),
+    }));
+    toast('Habit deleted', { duration: 2000 });
+  } catch (error) {
+    toast.error('Failed to delete habit');
+    throw error;
+  }
+},
+
+  archiveHabit: async (habitId) => {
+  try {
+    await apiClient.patch(`/api/v1/habits/${habitId}`, { status: 'archived' });
+    set((state) => ({
+      habits: state.habits.filter(h => h.id !== habitId),
+    }));
+    toast('Habit archived', { duration: 2000 });
+  } catch (error) {
+    toast.error('Failed to archive habit');
+    throw error;
+  }
+},
+
+pauseHabit: async (habitId, pauseUntil = null) => {
+  try {
+    await apiClient.patch(`/api/v1/habits/${habitId}`, {
+      status: 'paused',
+      ...(pauseUntil && { pause_until: pauseUntil }),
+    });
+    set((state) => ({
+      habits: state.habits.map(h =>
+        h.id === habitId ? { ...h, status: 'paused', pause_until: pauseUntil } : h
+      ),
+    }));
+    const msg = pauseUntil ? `Paused until ${new Date(pauseUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : "Habit paused";
+    toast(msg, { duration: 2500 });
+  } catch (error) {
+    toast.error('Failed to pause habit');
+    throw error;
+  }
+},
+
+resumeHabit: async (habitId) => {
+  try {
+    await apiClient.patch(`/api/v1/habits/${habitId}`, { status: 'active', pause_until: null });
+    set((state) => ({
+      habits: state.habits.map(h =>
+        h.id === habitId ? { ...h, status: 'active', pause_until: null } : h
+      ),
+    }));
+    toast('Habit resumed', { duration: 2000 });
+  } catch (error) {
+    toast.error('Failed to resume habit');
+    throw error;
+  }
+},
+
+fetchArchivedHabits: async (userId) => {
+  try {
+    const response = await apiClient.get('/api/v1/habits/archived', { params: { user_id: userId } });
+    return response.data?.data || [];
+  } catch (error) {
+    return [];
+  }
+},
 
   logHabit: async (habitId, completed = true, metricValue = null) => {
     // Optimistically mark as complete immediately

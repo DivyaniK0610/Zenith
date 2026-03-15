@@ -19,3 +19,8 @@ export const createHabit = async (habitData) => {
     const response = await apiClient.post('/api/v1/habits/', habitData);
     return response.data;
 };
+
+export const deleteHabit = async (habitId) => {
+    const response = await apiClient.delete(`/api/v1/habits/${habitId}`);
+    return response.data;
+};
