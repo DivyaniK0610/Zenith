@@ -29,30 +29,56 @@ export const parseHabitDescription = async (description) => {
     const response = await apiClient.post('/api/v1/habits/parse', { description });
     return response.data;
 };
+
 /**
  * Saves a completed Pomodoro session as a habit log.
  * @param {string} habitId - The UUID of the habit.
  * @param {number} duration - Minutes spent focusing.
  */
 export const logPomodoroSession = async (habitId, duration) => {
-  const today = new Date().toISOString().split('T')[0];
-  
-  const payload = {
-    habit_id: habitId,
-    log_date: today,
-    duration_logged: duration, 
-    notes: "Completed Pomodoro session"
-  };
+    const today = new Date().toISOString().split('T')[0];
 
-  // Fixed: changed 'api' to 'apiClient' to match your import
-  const response = await apiClient.post('/api/v1/habits/log', payload); 
-  return response.data;
+    const payload = {
+        habit_id: habitId,
+        log_date: today,
+        duration_logged: duration,
+        notes: 'Completed Pomodoro session',
+    };
+
+    const response = await apiClient.post('/api/v1/habits/log', payload);
+    return response.data;
 };
 
-// Fetch Heatmap Data
+/**
+ * Fetch heatmap data for a user.
+ * Calls GET /api/v1/game/heatmap/{userId} — the canonical endpoint
+ * in routes_game.py wired to the analytics service.
+ *
+ * Response shape:
+ *   { habits, date_range, matrix, weekly_summary }
+ *
+ * @param {string} userId
+ * @param {number} weeks  1–52, default 12
+ */
 export const fetchHeatmapData = async (userId, weeks = 12) => {
-  const response = await apiClient.get('/api/v1/analytics/heatmap', {
-    params: { user_id: userId, weeks: weeks }
-  });
-  return response.data.data;
+    const response = await apiClient.get(`/api/v1/game/heatmap/${userId}`, {
+        params: { weeks },
+    });
+    return response.data.data; // { habits, date_range, matrix, weekly_summary }
+};
+
+/**
+ * Fetch daily completion rates for a user.
+ * Calls GET /api/v1/game/daily-rate/{userId}
+ *
+ * Response shape: [{ date, completed, total, completion_rate }]
+ *
+ * @param {string} userId
+ * @param {number} days   1–365, default 30
+ */
+export const fetchDailyRates = async (userId, days = 30) => {
+    const response = await apiClient.get(`/api/v1/game/daily-rate/${userId}`, {
+        params: { days },
+    });
+    return response.data.data; // [{ date, completed, total, completion_rate }]
 };
