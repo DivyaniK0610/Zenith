@@ -13,6 +13,7 @@ import {
 import apiClient from '../api/client';
 import { toast } from 'sonner';
 import { useZenithSounds } from '../hooks/useSound';
+import ZenithDateTimePicker from '../components/ZenithDateTimePicker';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
@@ -143,14 +144,23 @@ function SectionToggle({ icon: Icon, label, count, open, onToggle, accent = 'var
 // ─────────────────────────────────────────────────────────────────────────────
 // Tasks section
 // ─────────────────────────────────────────────────────────────────────────────
-function TasksSection() {
-  const [tasks, setTasks]     = useState([]);
+function TasksSection({ onSetReminder }) {
+  const [tasks, setTasks] = useState(() => {
+      try { return JSON.parse(localStorage.getItem('zenith_tasks')) || []; }
+      catch { return []; }
+    });
+
+    useEffect(() => {
+      localStorage.setItem('zenith_tasks', JSON.stringify(tasks));
+    }, [tasks]);
   const [input, setInput]     = useState('');
   const [focused, setFocused] = useState(false);
 
+  const { playSuccess } = useZenithSounds();
   const addTask = () => {
     const text = input.trim();
     if (!text) return;
+    playSuccess();
     setTasks(prev => [...prev, { id: Date.now(), text, done: false }]);
     setInput('');
   };
@@ -302,74 +312,142 @@ function TasksSection() {
 // Reminders section
 // ─────────────────────────────────────────────────────────────────────────────
 function RemindersSection() {
-  const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
+  const [reminders, setReminders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('zenith_reminders')) || DEFAULT_REMINDERS; }
+    catch { return DEFAULT_REMINDERS; }
+  });
+  const [adding, setAdding]   = useState(false);
+  const [label, setLabel]     = useState('');
 
-  const toggle = (id) =>
-    setReminders(prev => prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+  useEffect(() => {
+    localStorage.setItem('zenith_reminders', JSON.stringify(reminders));
+  }, [reminders]);
+
+  const { playToggleOn, playToggleOff } = useZenithSounds();
+
+  const toggle = (id) => {
+    setReminders(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      r.enabled ? playToggleOff() : playToggleOn();
+      return { ...r, enabled: !r.enabled };
+    }));
+  };
+
+  const deleteReminder = (id) =>
+    setReminders(prev => prev.filter(r => r.id !== id));
+
+  const handlePickerConfirm = (displayTime) => {
+    if (!label.trim()) return;
+    playToggleOn();
+    setReminders(prev => [...prev, {
+      id: `r${Date.now()}`, label: label.trim(),
+      time: displayTime, enabled: true,
+    }]);
+    setLabel('');
+    setAdding(false);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {reminders.map((r, i) => (
         <motion.div
           key={r.id}
+          layout
           initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.04 }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+          className="group flex items-center gap-3 px-3 py-2.5 rounded-xl"
           style={{
             background: r.enabled ? 'var(--color-surface-2)' : 'transparent',
-            border: `1px solid ${r.enabled ? 'var(--color-border)' : 'var(--color-border)'}`,
+            border: `1px solid var(--color-border)`,
             opacity: r.enabled ? 1 : 0.5,
             transition: 'all 0.2s',
           }}
         >
-          <div
-            style={{
-              width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: r.enabled ? 'rgba(184,115,51,0.1)' : 'var(--color-stone)',
-              border: `1px solid ${r.enabled ? 'rgba(184,115,51,0.2)' : 'var(--color-border)'}`,
-              transition: 'all 0.2s',
-            }}
-          >
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: r.enabled ? 'rgba(184,115,51,0.1)' : 'var(--color-stone)',
+            border: `1px solid ${r.enabled ? 'rgba(184,115,51,0.2)' : 'var(--color-border)'}`,
+            transition: 'all 0.2s',
+          }}>
             <AlarmClock size={12} style={{ color: r.enabled ? 'var(--color-primary)' : 'var(--color-text-3)' }} />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-1)' }}>
-              {r.label}
-            </div>
-            <div style={{ fontSize: '10px', color: 'var(--color-text-3)', fontFamily: 'var(--font-mono)', marginTop: '1px' }}>
-              {r.time}
-            </div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-1)' }}>{r.label}</div>
+            <div style={{ fontSize: '10px', color: 'var(--color-text-3)', fontFamily: 'var(--font-mono)', marginTop: '1px' }}>{r.time}</div>
           </div>
 
+          {/* Delete on hover */}
+          <button
+            onClick={() => deleteReminder(r.id)}
+            className="opacity-0 group-hover:opacity-100"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-3)', padding: '2px', display: 'flex', transition: 'color 0.15s', flexShrink: 0 }}
+            onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-3)'}
+          >
+            <Trash2 size={11} />
+          </button>
+
           {/* Toggle pill */}
-          <motion.button
-            onClick={() => toggle(r.id)}
-            whileTap={{ scale: 0.92 }}
+          <motion.button onClick={() => toggle(r.id)} whileTap={{ scale: 0.92 }}
             style={{
               width: '36px', height: '20px', borderRadius: '99px', flexShrink: 0,
               position: 'relative', cursor: 'pointer', border: 'none',
-              background: r.enabled
-                ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))'
-                : 'var(--color-stone-mid)',
+              background: r.enabled ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))' : 'var(--color-stone-mid)',
               transition: 'background 0.2s',
               boxShadow: r.enabled ? '0 0 8px rgba(184,115,51,0.3)' : 'none',
             }}
           >
-            <motion.div
-              animate={{ x: r.enabled ? 18 : 2 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              style={{
-                position: 'absolute', top: '2px',
-                width: '16px', height: '16px', borderRadius: '99px',
-                background: 'white',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-              }}
-            />
+            <motion.div animate={{ x: r.enabled ? 18 : 2 }} transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              style={{ position: 'absolute', top: '2px', width: '16px', height: '16px', borderRadius: '99px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
           </motion.button>
         </motion.div>
       ))}
+
+      {/* Add reminder flow */}
+      <AnimatePresence mode="wait">
+        {!adding ? (
+          <motion.button key="add-btn"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setAdding(true)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              width: '100%', padding: '8px', borderRadius: '10px',
+              fontSize: '11px', color: 'var(--color-text-3)', background: 'transparent',
+              border: '1px dashed var(--color-border)', cursor: 'pointer', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary-border)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-3)'; }}
+          >
+            <Bell size={11} /> Add reminder
+          </motion.button>
+        ) : (
+          <motion.div key="picker"
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+          >
+            {/* Label input first */}
+            <input
+              autoFocus value={label} onChange={e => setLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') { setAdding(false); setLabel(''); } }}
+              placeholder="Reminder label…"
+              style={{
+                background: 'var(--color-stone)', border: '1px solid var(--color-border)',
+                borderRadius: '10px', padding: '9px 12px', color: 'var(--color-text-1)',
+                fontSize: '13px', fontFamily: 'var(--font-sans)', outline: 'none', width: '100%', boxSizing: 'border-box',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--color-primary-border)'}
+              onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+            />
+            {/* Custom date/time picker */}
+            <ZenithDateTimePicker
+              onConfirm={handlePickerConfirm}
+              onCancel={() => { setAdding(false); setLabel(''); }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <p style={{ fontSize: '10px', color: 'var(--color-text-3)', textAlign: 'center', padding: '4px 0', opacity: 0.6 }}>
         Browser notifications — enable in settings
@@ -769,7 +847,7 @@ export default function Dashboard() {
                   style={{ overflow: 'hidden' }}
                 >
                   <div style={{ paddingTop: '8px' }}>
-                    <TasksSection />
+                    <TasksSection onSetReminder={() => setShowReminders(true)} />
                   </div>
                 </motion.div>
               )}

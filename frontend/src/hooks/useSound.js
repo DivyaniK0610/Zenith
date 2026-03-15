@@ -104,6 +104,14 @@ export function useZenithSounds() {
     playSound('/src/assets/sounds/toggle_on.wav', 0.4);
   }, []);
 
+  const playToggleOn = useCallback(() => {
+    playSound('/src/assets/sounds/toggle_on.wav', 0.3);
+  }, []);
+
+  const playToggleOff = useCallback(() => {
+    playSound('/src/assets/sounds/toggle_off.wav', 0.3);
+  }, []);
+
   // Open menu
   const playMenuOpen = useCallback(() => {
     playSound('/src/assets/sounds/tap_01.wav', 0.25);
@@ -130,5 +138,7 @@ export function useZenithSounds() {
     playMenuOpen,
     playModalOpen,
     playModalClose,
+    playToggleOn,
+    playToggleOff,
   };
 }
