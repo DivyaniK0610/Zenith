@@ -71,7 +71,7 @@ export function useZenithSounds() {
 
   // Habit completion — celebration sound
   const playSuccess = useCallback(() => {
-    playSound('/src/assets/sounds/celebration.wav', 0.45);
+    playSound('/src/assets/sounds/tap_05.wav', 0.65);
   }, []);
 
   // Level up — keep the dramatic synth fanfare

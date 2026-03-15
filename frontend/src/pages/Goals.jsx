@@ -477,6 +477,7 @@ function GoalCard({ goal, habits, completedToday, index }) {
 export default function Goals() {
   const { habits, goals, loadGoals, completedToday, loadHabits } = useHabitStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [showUngrouped, setShowUngrouped] = useState(false);
 
   useEffect(() => { loadGoals(USER_ID); loadHabits(USER_ID); }, [loadGoals, loadHabits]);
 
@@ -575,7 +576,7 @@ export default function Goals() {
           {ungrouped.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: goals.length * 0.05 + 0.1 }}
               style={{ borderRadius: '20px', overflow: 'hidden', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', opacity: 0.8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--color-border)' }}>
+              <div onClick={() => setShowUngrouped(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-stone)', border: '1px solid var(--color-border)', fontSize: '16px' }}>📋</div>
                   <div>
@@ -583,22 +584,32 @@ export default function Goals() {
                     <div style={{ fontSize: '10px', color: 'var(--color-text-3)', marginTop: '1px' }}>{ungrouped.length} habit{ungrouped.length !== 1 ? 's' : ''} · not in any goal</div>
                   </div>
                 </div>
+                <motion.div animate={{ rotate: showUngrouped ? 180 : 0 }} transition={{ duration: 0.18 }}>
+                  <ChevronDown size={13} style={{ color: 'var(--color-text-3)' }} />
+                </motion.div>
               </div>
-              <div style={{ padding: '8px 12px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {ungrouped.map(habit => {
-                  const isDone = completedToday.has(habit.id);
-                  return (
-                    <div key={habit.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '11px', background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
-                      <div style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(52,138,85,0.2)' : 'var(--color-stone-mid)', border: `1px solid ${isDone ? 'rgba(82,168,115,0.3)' : 'var(--color-stone-light)'}` }}>
-                        {isDone && <CheckCircle2 size={11} color="#6fcf8a" />}
-                      </div>
-                      <span style={{ flex: 1, fontSize: '12px', color: isDone ? 'rgba(111,207,138,0.55)' : 'var(--color-text-3)', textDecoration: isDone ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{habit.title}</span>
-                      {habit.current_streak > 0 && <span style={{ fontSize: '10px', color: 'var(--color-primary)', flexShrink: 0 }}>🔥 {habit.current_streak}d</span>}
-                      <span style={{ fontSize: '10px', color: 'var(--color-text-3)', background: 'var(--color-stone-mid)', padding: '2px 7px', borderRadius: '5px', border: '1px solid var(--color-border)', flexShrink: 0 }}>Ungrouped</span>
-                    </div>
-                  );
-                })}
+              <AnimatePresence>
+  {showUngrouped && (
+    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        {ungrouped.map(habit => {
+          const isDone = completedToday.has(habit.id);
+          return (
+            <div key={habit.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '11px', background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
+              <div style={{ width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isDone ? 'rgba(52,138,85,0.2)' : 'var(--color-stone-mid)', border: `1px solid ${isDone ? 'rgba(82,168,115,0.3)' : 'var(--color-stone-light)'}` }}>
+                {isDone && <CheckCircle2 size={11} color="#6fcf8a" />}
               </div>
+              <span style={{ flex: 1, fontSize: '12px', color: isDone ? 'rgba(111,207,138,0.55)' : 'var(--color-text-3)', textDecoration: isDone ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{habit.title}</span>
+              {habit.current_streak > 0 && <span style={{ fontSize: '10px', color: 'var(--color-primary)', flexShrink: 0 }}>🔥 {habit.current_streak}d</span>}
+              <span style={{ fontSize: '10px', color: 'var(--color-text-3)', background: 'var(--color-stone-mid)', padding: '2px 7px', borderRadius: '5px', border: '1px solid var(--color-border)', flexShrink: 0 }}>Ungrouped</span>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
             </motion.div>
           )}
         </div>

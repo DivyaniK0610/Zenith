@@ -61,6 +61,7 @@ export default function HabitCard({ habit, onAchievement }) {
   const [menuOpen, setMenuOpen]           = useState(false);
   const [subMenu, setSubMenu]             = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPause, setConfirmPause]   = useState(null); // stores { days, label }
   const [deleting, setDeleting]           = useState(false);
   const [isCardHovered, setIsCardHovered] = useState(false);
 
@@ -105,13 +106,20 @@ export default function HabitCard({ habit, onAchievement }) {
     await archiveHabit(habit.id);
   };
 
-  const handlePauseOption = async (days) => {
-    setMenuOpen(false);
+  const handlePauseOption = (days) => {
+    const label = days === 1 ? 'tomorrow only' : days ? `${days} days` : 'indefinitely';
     setSubMenu(null);
-    playPause();
-    const pauseUntil = days
-      ? new Date(Date.now() + days * 86400000).toISOString().split('T')[0]
+    setConfirmPause({ days, label });
+  };
+
+  const executePause = async () => {
+    if (!confirmPause) return;
+    const pauseUntil = confirmPause.days
+      ? new Date(Date.now() + confirmPause.days * 86400000).toISOString().split('T')[0]
       : null;
+    setMenuOpen(false);
+    setConfirmPause(null);
+    playPause();
     await pauseHabit(habit.id, pauseUntil);
   };
 
@@ -345,7 +353,7 @@ export default function HabitCard({ habit, onAchievement }) {
                         }}
                       >
                         {/* Main menu */}
-                        {!confirmDelete && subMenu === null && (
+                        {!confirmDelete && subMenu === null && !confirmPause && (
                           <>
                             {isPaused ? (
                               <button
@@ -452,10 +460,43 @@ export default function HabitCard({ habit, onAchievement }) {
                             </div>
                           </div>
                         )}
+                        {/* Pause confirmation */}
+                      {confirmPause && (
+                        <div style={{ padding: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(184,115,51,0.12)', border: '1px solid rgba(184,115,51,0.2)', flexShrink: 0 }}>
+                              <PauseCircle size={13} style={{ color: 'var(--color-primary)' }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-1)' }}>
+                                Pause {confirmPause.label}?
+                              </div>
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-3)', marginTop: '1px' }}>
+                                Streak is safe — but use sparingly
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); executePause(); }}
+                              style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(184,115,51,0.12)', border: '1px solid rgba(184,115,51,0.25)', cursor: 'pointer' }}
+                            >
+                              Yes, pause
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setConfirmPause(null); }}
+                              style={{ flex: 1, padding: '7px', borderRadius: '8px', fontSize: '11px', color: 'var(--color-text-3)', background: 'var(--color-stone)', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       </motion.div>
                     </>,
                     document.body
                   )}
+                  
                 </motion.div>
               )}
             </AnimatePresence>

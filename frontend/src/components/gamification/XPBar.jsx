@@ -27,10 +27,67 @@ function AnimatedNumber({ value }) {
   return <>{display}</>;
 }
 
-export default function XPBar({ xp = 0, level = 1 }) {
+// compact=true → slim inline version for use inside the unified progress card
+export default function XPBar({ xp = 0, level = 1, compact = false }) {
   const xpInLevel = xp % XP_PER_LEVEL;
   const progress  = (xpInLevel / XP_PER_LEVEL) * 100;
 
+  // ── Compact mode — just the bar + labels, no outer card shell ──────────────
+  if (compact) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '18px', height: '18px', borderRadius: '6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))',
+              flexShrink: 0,
+            }}>
+              <Zap size={10} color="#fff" fill="#fff" />
+            </div>
+            <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
+              Level
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '15px', fontWeight: 700, color: 'var(--color-warm-white)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+              {level}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+            <span style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 500 }}>
+              <AnimatedNumber value={xpInLevel} />
+            </span>
+            <span style={{ color: 'var(--color-text-3)', fontSize: '11px' }}>/ {XP_PER_LEVEL} XP</span>
+          </div>
+        </div>
+
+        {/* Progress track */}
+        <div style={{ height: '5px', borderRadius: '99px', overflow: 'hidden', background: 'var(--color-stone)', position: 'relative' }}>
+          <motion.div
+            style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(90deg, var(--color-primary-dim), var(--color-primary), #d4954a)',
+              borderRadius: '99px',
+            }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+          <span style={{ color: 'var(--color-text-3)', fontSize: '10px' }}>
+            {Math.round(progress)}% to next level
+          </span>
+          <span style={{ color: '#6fcf8a', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
+            ↑ <AnimatedNumber value={xp} /> total
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Full mode — standalone card with icon (sidebar / standalone use) ────────
   return (
     <div
       className="relative rounded-2xl overflow-hidden"
@@ -47,7 +104,7 @@ export default function XPBar({ xp = 0, level = 1 }) {
         }}
       />
 
-      {/* Ambient glow behind icon */}
+      {/* Ambient glow */}
       <div
         className="absolute top-0 left-0 w-32 h-full pointer-events-none"
         style={{
@@ -119,9 +176,7 @@ export default function XPBar({ xp = 0, level = 1 }) {
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-            >
-              
-            </motion.div>
+            />
           </div>
 
           {/* Sub-labels */}
