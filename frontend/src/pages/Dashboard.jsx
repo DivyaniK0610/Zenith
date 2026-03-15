@@ -393,7 +393,7 @@ export default function Dashboard() {
                   <motion.div
                     initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                     transition={{ delay: 0.3, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="relative rounded-2xl overflow-hidden mt-2 p-5 text-center"
+                    className="relative rounded-2xl overflow-hidden mt-5 p-5 text-center"
                     style={{ background: 'linear-gradient(135deg, rgba(82,168,115,0.07), rgba(52,138,85,0.03))', border: '1px solid rgba(82,168,115,0.15)' }}>
                     <div className="absolute inset-x-0 top-0 h-px"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(82,168,115,0.3), transparent)' }} />

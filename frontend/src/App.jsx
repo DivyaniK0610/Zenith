@@ -6,10 +6,10 @@ import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import AICoach from './pages/AICoach';
 import Timer from './pages/Timer';
+import Goals from './pages/Goals';
 import { checkBackendHealth } from './api/client';
 import { Activity } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import Goals from './pages/Goals';
 
 function AppInner() {
   const location = useLocation();
@@ -50,12 +50,12 @@ function AppInner() {
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          {/* Wider max-width for two-column layout */}
           <div className="px-5 pt-7 pb-28 md:px-8 md:pb-12 w-full" style={{ maxWidth: '1100px', margin: '0 auto' }}>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
                 <Route path="/"          element={<Dashboard />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/goals"     element={<Goals />} />
                 <Route path="/coach"     element={<AICoach />} />
                 <Route path="/timer"     element={<Timer />} />
               </Routes>
