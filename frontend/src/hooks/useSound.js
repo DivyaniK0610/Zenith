@@ -1,27 +1,24 @@
 import { useRef, useCallback } from 'react';
 
-// Generates a Web Audio API chime tone — no external files needed
-function createSuccessChime(audioCtx) {
-  const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-  notes.forEach((freq, i) => {
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+// Cache audio instances so we don't reload files repeatedly
+const audioCache = {};
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.08);
-
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.08);
-    gainNode.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + i * 0.08 + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.08 + 0.4);
-
-    oscillator.start(audioCtx.currentTime + i * 0.08);
-    oscillator.stop(audioCtx.currentTime + i * 0.08 + 0.4);
-  });
+function playSound(path, volume = 0.5) {
+  try {
+    if (!audioCache[path]) {
+      audioCache[path] = new Audio(path);
+    }
+    const audio = audioCache[path];
+    audio.currentTime = 0;
+    audio.volume = volume;
+    audio.play().catch(() => {}); // silently ignore autoplay blocks
+  } catch (e) {
+    // silently ignore
+  }
 }
 
+// Keep the original synth sounds for level up / streak
+// (they're more dramatic than the WAV files)
 function createLevelUpFanfare(audioCtx) {
   const sequence = [
     { freq: 523.25, time: 0 },
@@ -72,17 +69,66 @@ export function useZenithSounds() {
     return audioCtxRef.current;
   }, []);
 
+  // Habit completion — celebration sound
   const playSuccess = useCallback(() => {
-    try { createSuccessChime(getCtx()); } catch (e) { /* audio blocked */ }
-  }, [getCtx]);
+    playSound('/src/assets/sounds/celebration.wav', 0.45);
+  }, []);
 
+  // Level up — keep the dramatic synth fanfare
   const playLevelUp = useCallback(() => {
-    try { createLevelUpFanfare(getCtx()); } catch (e) { /* audio blocked */ }
+    try { createLevelUpFanfare(getCtx()); } catch (e) {}
   }, [getCtx]);
 
+  // Streak milestone — keep synth
   const playStreak = useCallback(() => {
-    try { createStreakSound(getCtx()); } catch (e) { /* audio blocked */ }
+    try { createStreakSound(getCtx()); } catch (e) {}
   }, [getCtx]);
 
-  return { playSuccess, playLevelUp, playStreak };
+  // Delete habit
+  const playDelete = useCallback(() => {
+    playSound('/src/assets/sounds/disabled.wav', 0.4);
+  }, []);
+
+  // Archive habit
+  const playArchive = useCallback(() => {
+    playSound('/src/assets/sounds/swipe_01.wav', 0.4);
+  }, []);
+
+  // Pause habit
+  const playPause = useCallback(() => {
+    playSound('/src/assets/sounds/toggle_off.wav', 0.4);
+  }, []);
+
+  // Resume habit
+  const playResume = useCallback(() => {
+    playSound('/src/assets/sounds/toggle_on.wav', 0.4);
+  }, []);
+
+  // Open menu
+  const playMenuOpen = useCallback(() => {
+    playSound('/src/assets/sounds/tap_01.wav', 0.25);
+  }, []);
+
+  // Modal open
+  const playModalOpen = useCallback(() => {
+    playSound('/src/assets/sounds/tap_05.wav', 0.3);
+  }, []);
+
+  // Modal close
+  const playModalClose = useCallback(() => {
+    playSound('/src/assets/sounds/tap_01.wav', 0.3);
+  }, []);
+
+  return {
+    playSuccess,
+    playLevelUp,
+    playStreak,
+    playDelete,
+    playArchive,
+    playPause,
+    playResume,
+    playMenuOpen,
+    playModalOpen,
+    playModalClose,
+  };
 }

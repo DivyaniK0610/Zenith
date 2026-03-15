@@ -44,27 +44,31 @@ function MetricBadge({ habit }) {
 const isTouchDevice = () => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
 const PAUSE_OPTIONS = [
-  { label: 'Tomorrow only',  days: 1  },
-  { label: '3 days',         days: 3  },
-  { label: '1 week',         days: 7  },
-  { label: '2 weeks',        days: 14 },
-  { label: 'Indefinitely',   days: null },
+  { label: 'Tomorrow only', days: 1   },
+  { label: '3 days',        days: 3   },
+  { label: '1 week',        days: 7   },
+  { label: '2 weeks',       days: 14  },
+  { label: 'Indefinitely',  days: null },
 ];
 
 export default function HabitCard({ habit, onAchievement }) {
   const { logHabit, loadHabits, completedToday, removeHabit, archiveHabit, pauseHabit, resumeHabit } = useHabitStore();
   const isCompleted = completedToday.has(habit.id);
   const isPaused    = habit.status === 'paused';
-  const [isAnimating, setIsAnimating]       = useState(false);
-  const [justCompleted, setJustCompleted]   = useState(false);
-  const [menuOpen, setMenuOpen]             = useState(false);
-  const [subMenu, setSubMenu]               = useState(null); // 'pause'
-  const [confirmDelete, setConfirmDelete]   = useState(false);
-  const [deleting, setDeleting]             = useState(false);
-  const [isCardHovered, setIsCardHovered]   = useState(false);
-  const { playSuccess } = useZenithSounds();
+
+  const [isAnimating, setIsAnimating]     = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const [subMenu, setSubMenu]             = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting]           = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
+
+  const { playSuccess, playDelete, playArchive, playPause, playResume, playMenuOpen } = useZenithSounds();
   const menuBtnRef = useRef(null);
   const isTouch = isTouchDevice();
+
+  // ── Handlers ──────────────────────────────────────────────────────────
 
   const handleComplete = async () => {
     if (isCompleted || isAnimating || isPaused) return;
@@ -90,18 +94,21 @@ export default function HabitCard({ habit, onAchievement }) {
 
   const handleDelete = async () => {
     setDeleting(true);
+    playDelete();
     try { await removeHabit(habit.id); }
     catch (_) { setDeleting(false); setConfirmDelete(false); }
   };
 
   const handleArchive = async () => {
     setMenuOpen(false);
+    playArchive();
     await archiveHabit(habit.id);
   };
 
   const handlePauseOption = async (days) => {
     setMenuOpen(false);
     setSubMenu(null);
+    playPause();
     const pauseUntil = days
       ? new Date(Date.now() + days * 86400000).toISOString().split('T')[0]
       : null;
@@ -110,6 +117,7 @@ export default function HabitCard({ habit, onAchievement }) {
 
   const handleResume = async () => {
     setMenuOpen(false);
+    playResume();
     await resumeHabit(habit.id);
   };
 
@@ -117,12 +125,19 @@ export default function HabitCard({ habit, onAchievement }) {
     e.stopPropagation();
     setConfirmDelete(false);
     setSubMenu(null);
+    playMenuOpen();
     setMenuOpen(o => !o);
   };
 
-  const closeMenu = () => { setMenuOpen(false); setConfirmDelete(false); setSubMenu(null); };
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setConfirmDelete(false);
+    setSubMenu(null);
+  };
 
   const btnOpacity = isTouch ? 1 : (menuOpen || isCardHovered ? 1 : 0);
+
+  // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <motion.div
@@ -141,7 +156,12 @@ export default function HabitCard({ habit, onAchievement }) {
         className="relative rounded-2xl"
         style={{
           background: isPaused ? 'rgba(20,18,14,0.7)' : isCompleted ? 'rgba(18,24,18,0.9)' : 'var(--color-surface-2)',
-          border: `1px solid ${isPaused ? 'rgba(255,255,255,0.04)' : isCardHovered && !isCompleted ? 'rgba(184,115,51,0.2)' : isCompleted ? 'rgba(82,168,115,0.18)' : 'var(--color-border)'}`,
+          border: `1px solid ${
+            isPaused ? 'rgba(255,255,255,0.04)'
+            : isCardHovered && !isCompleted ? 'rgba(184,115,51,0.2)'
+            : isCompleted ? 'rgba(82,168,115,0.18)'
+            : 'var(--color-border)'
+          }`,
           boxShadow: isCardHovered && !isCompleted && !isPaused ? '0 4px 20px rgba(0,0,0,0.25)' : '0 1px 4px rgba(0,0,0,0.1)',
           opacity: isPaused ? 0.55 : 1,
           transition: 'border-color 0.2s, box-shadow 0.2s, background 0.3s, opacity 0.3s',
@@ -154,7 +174,9 @@ export default function HabitCard({ habit, onAchievement }) {
           />
           <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-r-full"
             style={{
-              background: isPaused ? 'rgba(100,90,80,0.3)' : isCompleted ? 'linear-gradient(to bottom, rgba(82,168,115,0.6), rgba(52,138,85,0.2))' : 'linear-gradient(to bottom, rgba(184,115,51,0.5), rgba(184,115,51,0.1))',
+              background: isPaused ? 'rgba(100,90,80,0.3)' : isCompleted
+                ? 'linear-gradient(to bottom, rgba(82,168,115,0.6), rgba(52,138,85,0.2))'
+                : 'linear-gradient(to bottom, rgba(184,115,51,0.5), rgba(184,115,51,0.1))',
               opacity: isCompleted ? 1 : isCardHovered ? 1 : 0.6,
               transition: 'opacity 0.2s',
             }}
@@ -171,6 +193,7 @@ export default function HabitCard({ habit, onAchievement }) {
         </div>
 
         <div className="flex items-center gap-3 px-4 py-3.5">
+
           {/* Checkbox */}
           <motion.button
             whileTap={!isCompleted && !isPaused ? { scale: 0.78 } : {}}
@@ -186,39 +209,39 @@ export default function HabitCard({ habit, onAchievement }) {
           >
             <AnimatePresence mode="wait">
               {isCompleted ? (
-                <motion.div key="check" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }}
+                <motion.div key="check"
+                  initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 320, damping: 16 }}>
                   <Check size={15} color="#6fcf8a" strokeWidth={2.8} />
                 </motion.div>
               ) : (
                 <motion.div key="empty" exit={{ scale: 0, opacity: 0 }} className="relative w-3.5 h-3.5">
-                <div
-                  className={`w-full h-full rounded-md border-2 ${isCardHovered ? '' : 'habit-checkbox-idle'}`}
-                  style={{
-                    borderColor: isCardHovered ? 'transparent' : 'var(--color-stone-light)',
-                    transition: 'border-color 0.15s',
-                  }}
-                />
-                {/* Ghost tick on card hover */}
-                <motion.svg
-                  viewBox="0 0 10 8" fill="none"
-                  className="absolute inset-0 w-full h-full"
-                  initial={{ opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: isCardHovered ? 0.3 : 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <motion.path
-                    d="M1 4L3.5 6.5L9 1"
-                    stroke="#6fcf8a"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: isCardHovered ? 1 : 0 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  <div
+                    className={`w-full h-full rounded-md border-2 ${isCardHovered ? '' : 'habit-checkbox-idle'}`}
+                    style={{
+                      borderColor: isCardHovered ? 'transparent' : 'var(--color-stone-light)',
+                      transition: 'border-color 0.15s',
+                    }}
                   />
-                </motion.svg>
-              </motion.div>
+                  {/* Ghost tick on hover */}
+                  <motion.svg
+                    viewBox="0 0 10 8" fill="none"
+                    className="absolute inset-0 w-full h-full"
+                    animate={{ opacity: isCardHovered ? 0.35 : 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <motion.path
+                      d="M1 4L3.5 6.5L9 1"
+                      stroke="#6fcf8a"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: isCardHovered ? 1 : 0 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                    />
+                  </motion.svg>
+                </motion.div>
               )}
             </AnimatePresence>
           </motion.button>
@@ -254,7 +277,7 @@ export default function HabitCard({ habit, onAchievement }) {
             )}
           </div>
 
-          {/* Right side */}
+          {/* Right side — XP flash or ⋯ menu */}
           <div className="flex-shrink-0 flex items-center" style={{ width: '28px', justifyContent: 'center' }}>
             <AnimatePresence mode="wait">
               {justCompleted && isCompleted ? (
@@ -294,6 +317,7 @@ export default function HabitCard({ habit, onAchievement }) {
                     <MoreHorizontal size={13} />
                   </button>
 
+                  {/* Portal dropdown */}
                   {menuOpen && createPortal(
                     <>
                       <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={closeMenu} />
@@ -323,7 +347,6 @@ export default function HabitCard({ habit, onAchievement }) {
                         {/* Main menu */}
                         {!confirmDelete && subMenu === null && (
                           <>
-                            {/* Resume or Pause */}
                             {isPaused ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleResume(); }}
@@ -338,7 +361,7 @@ export default function HabitCard({ habit, onAchievement }) {
                             ) : (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSubMenu('pause'); }}
-                                className="w-full flex items-center justify-between gap-2.5 px-3 py-2.5 text-left text-xs font-medium"
+                                className="w-full flex items-center justify-between px-3 py-2.5 text-left text-xs font-medium"
                                 style={{ color: 'var(--color-text-2)', borderBottom: '1px solid var(--color-border)' }}
                                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -351,7 +374,6 @@ export default function HabitCard({ habit, onAchievement }) {
                               </button>
                             )}
 
-                            {/* Archive */}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleArchive(); }}
                               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium"
@@ -363,7 +385,6 @@ export default function HabitCard({ habit, onAchievement }) {
                               Archive habit
                             </button>
 
-                            {/* Delete */}
                             <button
                               onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium"
@@ -393,8 +414,7 @@ export default function HabitCard({ habit, onAchievement }) {
                               </span>
                             </div>
                             {PAUSE_OPTIONS.map(({ label, days }) => (
-                              <button
-                                key={label}
+                              <button key={label}
                                 onClick={(e) => { e.stopPropagation(); handlePauseOption(days); }}
                                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs font-medium"
                                 style={{ color: 'var(--color-text-2)', borderBottom: '1px solid var(--color-border)' }}
@@ -414,14 +434,19 @@ export default function HabitCard({ habit, onAchievement }) {
                               Delete <strong style={{ color: 'var(--color-text-1)' }}>{habit.title}</strong> and all its logs?
                             </p>
                             <div className="flex gap-2">
-                              <button onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={deleting}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                                disabled={deleting}
                                 className="flex-1 py-1.5 rounded-lg text-xs font-semibold"
-                                style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}>
+                                style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
+                              >
                                 {deleting ? '...' : 'Delete'}
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
                                 className="flex-1 py-1.5 rounded-lg text-xs font-medium"
-                                style={{ background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)' }}>
+                                style={{ background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)' }}
+                              >
                                 Cancel
                               </button>
                             </div>

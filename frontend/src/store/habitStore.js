@@ -178,7 +178,10 @@ fetchArchivedHabits: async (userId) => {
         } else if (g.milestone_bonus > 0) {
           toast(`🔥 ${g.current_streak}-day streak! +${g.xp_gained} XP`, { duration: 3500 });
         } else {
-          toast(`+${g.xp_gained} XP — ${g.message}`, { duration: 2500 });
+          toast(`✦ +${g.xp_gained} XP — ${g.message.replace(/^[^\w\s]+\s*/, '')}`, {
+            duration: 2500,
+            style: { color: 'var(--color-primary)' },
+          });
         }
 
         return response.gamification;

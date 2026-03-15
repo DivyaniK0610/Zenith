@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Sparkles, ChevronDown, Flame, CheckCircle2, Trophy, Zap, Archive, Target } from 'lucide-react';
 import apiClient from '../api/client';
 import { toast } from 'sonner';
+import { useZenithSounds } from '../hooks/useSound';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
@@ -226,6 +227,7 @@ export default function Dashboard() {
   const completedCount  = completedHabits.length;
   const today           = new Date();
   const allDone         = activeHabits.length > 0 && completedCount === activeHabits.length;
+  const { playModalOpen } = useZenithSounds();
 
   useEffect(() => { loadHabits(USER_ID); }, [loadHabits]);
 
@@ -273,7 +275,7 @@ export default function Dashboard() {
           <TestPanel onTrigger={handleAchievement} />
           <motion.button
             whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { playModalOpen(); setIsModalOpen(true); }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-medium text-sm"
             style={{ background: 'var(--color-primary-glow)', color: 'var(--color-primary)', border: '1px solid var(--color-primary-border)', letterSpacing: '-0.01em' }}
           >

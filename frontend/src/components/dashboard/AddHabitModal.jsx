@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, CheckSquare, Hash } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
+import { useZenithSounds } from '../../hooks/useSound';
 
 export default function AddHabitModal({ isOpen, onClose, userId }) {
   const { addHabit } = useHabitStore();
@@ -14,11 +15,16 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
     unit: '',
   });
   const [busy, setBusy] = useState(false);
+  const { playModalOpen, playModalClose } = useZenithSounds();
 
   const reset = () =>
     setForm({ title: '', description: '', metric_type: 'boolean', target_value: '', unit: '' });
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { 
+    playModalClose(); // ← add
+    reset(); 
+    onClose(); 
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
