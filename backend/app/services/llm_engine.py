@@ -2,6 +2,7 @@ import os
 from groq import AsyncGroq
 from dotenv import load_dotenv
 from app.services.embedding import retrieve_relevant_context, upsert_user_context_embedding
+import json
 
 load_dotenv()
 
@@ -192,4 +193,58 @@ async def analyze_habits(user_id: str) -> dict:
                 "context_used": context,
                 "error":        "Lost connection to the AI — check your network and retry.",
             }
+        raise
+
+HABIT_PARSER_SYSTEM_PROMPT = """You are a habit parser. Extract structured habit data from natural language descriptions.
+
+Always respond with ONLY a valid JSON object — no markdown, no explanation, no backticks.
+
+JSON schema:
+{
+  "title": "short habit name, max 6 words",
+  "description": "one sentence why this habit matters, or null",
+  "metric_type": "boolean" or "numeric",
+  "target_value": number or null,
+  "unit": "mins" or "hours" or "km" or "pages" or "reps" or "glasses" or null,
+  "confidence": 0.0 to 1.0
+}
+
+Rules:
+- If the description mentions a quantity (1 hour, 30 mins, 5km, 10 pages), use metric_type: "numeric"
+- If it's a simple yes/no habit (meditate, journal, cold shower), use metric_type: "boolean"
+- title should be action-oriented: "Read daily", "Run 5km", "Drink water"
+- unit must be one of: mins, hours, km, pages, reps, glasses — or null
+- target_value must be a number matching the unit, or null for boolean habits
+- confidence reflects how clearly the input mapped to a habit"""
+
+async def parse_habit_from_description(description: str) -> dict:
+    try:
+        completion = await _groq_client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": HABIT_PARSER_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Parse this into a habit: {description}"},
+            ],
+            temperature=0.1,
+            max_tokens=200,
+        )
+        raw = completion.choices[0].message.content.strip()
+        # Strip any accidental markdown fences
+        raw = raw.replace('```json', '').replace('```', '').strip()
+        parsed = json.loads(raw)
+        return parsed
+    except json.JSONDecodeError:
+        # Fallback — return a safe default
+        return {
+            "title": description[:50],
+            "description": None,
+            "metric_type": "boolean",
+            "target_value": None,
+            "unit": None,
+            "confidence": 0.2,
+        }
+    except Exception as e:
+        err = str(e).lower()
+        if "rate limit" in err or "429" in err:
+            raise Exception("Rate limited — try again in a moment")
         raise

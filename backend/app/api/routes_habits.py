@@ -1,15 +1,31 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from app.db.schemas import HabitCreate, HabitLogCreate
+from app.services.llm_engine import parse_habit_from_description
 from app.db.supabase import supabase
 # PHASE 3: Importing the new gamification engine
 from app.services.gamification import process_habit_log
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
+
 
 router = APIRouter(
     prefix="/api/v1/habits",
     tags=["Habits"]
 )
+
+class HabitParseRequest(BaseModel):
+    description: str = Field(..., min_length=3, max_length=500)
+
+@router.post("/parse", status_code=status.HTTP_200_OK)
+async def parse_habit_description(request: HabitParseRequest):
+    try:
+        result = await parse_habit_from_description(request.description)
+        return {"message": "Habit parsed successfully", "data": result}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to parse habit: {str(e)}"
+        )
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_habit(habit: HabitCreate):
@@ -166,3 +182,4 @@ async def get_archived_habits(user_id: str = Query(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch archived habits: {str(e)}"
         )
+

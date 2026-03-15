@@ -24,3 +24,8 @@ export const deleteHabit = async (habitId) => {
     const response = await apiClient.delete(`/api/v1/habits/${habitId}`);
     return response.data;
 };
+
+export const parseHabitDescription = async (description) => {
+    const response = await apiClient.post('/api/v1/habits/parse', { description });
+    return response.data;
+};
