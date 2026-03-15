@@ -9,6 +9,7 @@ import Timer from './pages/Timer';
 import { checkBackendHealth } from './api/client';
 import { Activity } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import Goals from './pages/Goals';
 
 function AppInner() {
   const location = useLocation();

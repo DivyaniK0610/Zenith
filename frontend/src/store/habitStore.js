@@ -209,4 +209,73 @@ fetchArchivedHabits: async (userId) => {
   },
 
   setUserStats: (stats) => set({ userStats: stats }),
+  // ── Goals ──────────────────────────────────────────────
+    goals: [],
+
+    loadGoals: async (userId) => {
+      try {
+        const response = await apiClient.get('/api/v1/goals/', { params: { user_id: userId } });
+        set({ goals: response.data?.data || [] });
+      } catch (error) {
+        console.error('Failed to load goals:', error);
+      }
+    },
+
+    addGoal: async (goalData) => {
+      try {
+        const response = await apiClient.post('/api/v1/goals/', goalData);
+        const newGoal = response.data.data;
+        set((state) => ({ goals: [...state.goals, newGoal] }));
+        toast('Goal created', { duration: 2000 });
+        return newGoal;
+      } catch (error) {
+        toast.error('Failed to create goal');
+        throw error;
+      }
+    },
+
+    removeGoal: async (goalId) => {
+      try {
+        await apiClient.delete(`/api/v1/goals/${goalId}`);
+        set((state) => ({
+          goals: state.goals.filter(g => g.id !== goalId),
+          habits: state.habits.map(h =>
+            h.macro_goal_id === goalId ? { ...h, macro_goal_id: null } : h
+          ),
+        }));
+        toast('Goal deleted', { duration: 2000 });
+      } catch (error) {
+        toast.error('Failed to delete goal');
+        throw error;
+      }
+    },
+
+    assignHabitToGoal: async (habitId, goalId) => {
+      try {
+        await apiClient.patch(`/api/v1/goals/${goalId}/assign/${habitId}`);
+        set((state) => ({
+          habits: state.habits.map(h =>
+            h.id === habitId ? { ...h, macro_goal_id: goalId } : h
+          ),
+        }));
+      } catch (error) {
+        toast.error('Failed to assign habit');
+        throw error;
+      }
+    },
+
+    unassignHabit: async (habitId) => {
+      try {
+        await apiClient.patch(`/api/v1/goals/unassign/${habitId}`);
+        set((state) => ({
+          habits: state.habits.map(h =>
+            h.id === habitId ? { ...h, macro_goal_id: null } : h
+          ),
+        }));
+      } catch (error) {
+        toast.error('Failed to unassign habit');
+        throw error;
+      }
+    },
 }));
+

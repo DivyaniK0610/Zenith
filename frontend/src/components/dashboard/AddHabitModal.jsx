@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, CheckSquare, Hash, Sparkles, ChevronRight } from 'lucide-react';
+import { X, Loader2, CheckSquare, Hash, Sparkles, ChevronRight, ChevronDown } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
 import { parseHabitDescription } from '../../api/habits';
 import { useZenithSounds } from '../../hooks/useSound';
@@ -9,17 +9,30 @@ import { useZenithSounds } from '../../hooks/useSound';
 const UNITS = ['mins', 'hours', 'km', 'pages', 'reps', 'glasses'];
 
 export default function AddHabitModal({ isOpen, onClose, userId }) {
-  const { addHabit } = useHabitStore();
+  const { addHabit, goals, loadGoals } = useHabitStore();
   const { playModalClose } = useZenithSounds();
 
-  const emptyForm = { title: '', description: '', metric_type: 'boolean', target_value: '', unit: 'mins' };
+  const emptyForm = {
+    title:         '',
+    description:   '',
+    metric_type:   'boolean',
+    target_value:  '',
+    unit:          'mins',
+    macro_goal_id: '',
+  };
+
   const [form, setForm]           = useState(emptyForm);
   const [busy, setBusy]           = useState(false);
   const [aiInput, setAiInput]     = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiMode, setAiMode]       = useState(true); // start in AI mode
+  const [aiMode, setAiMode]       = useState(true);
   const [aiError, setAiError]     = useState('');
-  const [aiUsed, setAiUsed]       = useState(false); // did AI pre-fill?
+  const [aiUsed, setAiUsed]       = useState(false);
+
+  // Load goals whenever modal opens
+  useEffect(() => {
+    if (isOpen) loadGoals(userId);
+  }, [isOpen, userId, loadGoals]);
 
   const reset = () => {
     setForm(emptyForm);
@@ -42,15 +55,16 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
     try {
       const result = await parseHabitDescription(aiInput.trim());
       const data = result.data;
-      setForm({
-        title:       data.title       || '',
-        description: data.description || '',
-        metric_type: data.metric_type || 'boolean',
+      setForm(prev => ({
+        ...prev,
+        title:        data.title        || '',
+        description:  data.description  || '',
+        metric_type:  data.metric_type  || 'boolean',
         target_value: data.target_value != null ? String(data.target_value) : '',
-        unit:        data.unit        || 'mins',
-      });
+        unit:         data.unit         || 'mins',
+      }));
       setAiUsed(true);
-      setAiMode(false); // switch to form view after parse
+      setAiMode(false);
     } catch (err) {
       setAiError('Could not parse — try being more specific.');
     } finally {
@@ -63,10 +77,11 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
     setBusy(true);
     try {
       const payload = {
-        user_id:     userId,
-        title:       form.title,
-        description: form.description || null,
-        metric_type: form.metric_type,
+        user_id:       userId,
+        title:         form.title,
+        description:   form.description || null,
+        metric_type:   form.metric_type,
+        macro_goal_id: form.macro_goal_id || null,
       };
       if (form.metric_type === 'numeric') {
         payload.target_value = parseFloat(form.target_value);
@@ -96,6 +111,16 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
     lineHeight: '1.5',
   };
 
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '6px',
+    fontSize: '10px',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    color: 'var(--color-text-3)',
+  };
+
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
@@ -107,7 +132,7 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
             style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)' }}
           />
 
-          {/* Modal */}
+          {/* Modal container */}
           <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -121,7 +146,7 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                 background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
                 boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
               }}>
-                {/* Top accent */}
+                {/* Top accent shimmer */}
                 <div style={{ position: 'absolute', inset: '0 0 auto 0', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(184,115,51,0.3), transparent)' }} />
 
                 {/* Header */}
@@ -144,14 +169,13 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
 
                 <div style={{ padding: '16px 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                  {/* ── AI mode toggle tabs ── */}
+                  {/* ── Mode tabs ── */}
                   <div style={{ display: 'flex', gap: '6px', padding: '3px', background: 'var(--color-stone)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
                     {[
                       { id: true,  label: 'AI assist', icon: Sparkles },
                       { id: false, label: 'Manual',    icon: null      },
                     ].map(({ id, label, icon: Icon }) => (
-                      <button key={String(id)} type="button"
-                        onClick={() => setAiMode(id)}
+                      <button key={String(id)} type="button" onClick={() => setAiMode(id)}
                         style={{
                           flex: 1, padding: '6px 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 600,
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
@@ -160,28 +184,24 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                           color: aiMode === id ? 'var(--color-primary)' : 'var(--color-text-3)',
                           border: aiMode === id ? '1px solid var(--color-primary-border)' : '1px solid transparent',
                           boxShadow: aiMode === id ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
-                        }}
-                      >
+                        }}>
                         {Icon && <Icon size={10} />}
                         {label}
                       </button>
                     ))}
                   </div>
 
-                  {/* ── AI input panel ── */}
+                  {/* ── AI / Manual panels ── */}
                   <AnimatePresence mode="wait">
-                    {aiMode ? (
+
+                    {/* AI panel */}
+                    {aiMode && (
                       <motion.div key="ai"
                         initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.15 }}
                         style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
                       >
-                        {/* Ambient glow card */}
-                        <div style={{
-                          position: 'relative', borderRadius: '12px', overflow: 'hidden',
-                          background: 'rgba(184,115,51,0.05)', border: '1px solid rgba(184,115,51,0.15)',
-                          padding: '12px',
-                        }}>
+                        <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', background: 'rgba(184,115,51,0.05)', border: '1px solid rgba(184,115,51,0.15)', padding: '12px' }}>
                           <div style={{ position: 'absolute', inset: '0 0 auto 0', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(184,115,51,0.25), transparent)' }} />
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                             <Sparkles size={11} style={{ color: 'var(--color-primary)' }} />
@@ -190,9 +210,7 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                             </span>
                           </div>
                           <textarea
-                            autoFocus
-                            rows={2}
-                            value={aiInput}
+                            autoFocus rows={2} value={aiInput}
                             onChange={e => { setAiInput(e.target.value); setAiError(''); }}
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiParse(); } }}
                             placeholder="e.g. I want to read for 1 hour every day, or run 5km each morning"
@@ -201,21 +219,20 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                             onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                           />
                           <motion.button
-                            type="button"
-                            onClick={handleAiParse}
-                            disabled={!aiInput.trim() || aiLoading}
-                            whileTap={{ scale: 0.97 }}
+                            type="button" onClick={handleAiParse}
+                            disabled={!aiInput.trim() || aiLoading} whileTap={{ scale: 0.97 }}
                             style={{
                               width: '100%', padding: '9px', borderRadius: '9px',
                               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                              fontSize: '12px', fontWeight: 600, cursor: aiInput.trim() ? 'pointer' : 'not-allowed',
-                              background: aiInput.trim() ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))' : 'var(--color-stone)',
+                              fontSize: '12px', fontWeight: 600,
+                              cursor: aiInput.trim() ? 'pointer' : 'not-allowed',
+                              background: aiInput.trim()
+                                ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))'
+                                : 'var(--color-stone)',
                               color: aiInput.trim() ? 'white' : 'var(--color-text-3)',
                               border: '1px solid rgba(184,115,51,0.3)',
-                              opacity: aiLoading ? 0.7 : 1,
-                              transition: 'all 0.15s',
-                            }}
-                          >
+                              opacity: aiLoading ? 0.7 : 1, transition: 'all 0.15s',
+                            }}>
                             {aiLoading
                               ? <><Loader2 size={12} className="animate-spin" /> Parsing…</>
                               : <><Sparkles size={12} /> Build habit with AI</>
@@ -237,13 +254,14 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                           Fill form manually <ChevronRight size={10} />
                         </button>
                       </motion.div>
-                    ) : (
+                    )}
 
-                      // ── Manual form ──
+                    {/* Manual form */}
+                    {!aiMode && (
                       <motion.form key="form" onSubmit={handleSubmit}
                         initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.15 }}
-                        style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+                        style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
                       >
                         {/* AI pre-fill banner */}
                         {aiUsed && (
@@ -256,12 +274,11 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                           </motion.div>
                         )}
 
-                        {/* Title */}
+                        {/* Habit name */}
                         <div>
-                          <label style={{ display: 'block', marginBottom: '6px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
-                            Habit name
-                          </label>
-                          <input autoFocus required value={form.title}
+                          <label style={labelStyle}>Habit name</label>
+                          <input
+                            autoFocus required value={form.title}
                             onChange={e => setForm({ ...form, title: e.target.value })}
                             placeholder="e.g., Read for 30 mins"
                             style={inputStyle}
@@ -272,10 +289,12 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
 
                         {/* Description */}
                         <div>
-                          <label style={{ display: 'block', marginBottom: '6px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
-                            Description <span style={{ textTransform: 'none', fontWeight: 400, letterSpacing: 0, opacity: 0.7 }}>(optional)</span>
+                          <label style={labelStyle}>
+                            Description{' '}
+                            <span style={{ textTransform: 'none', fontWeight: 400, letterSpacing: 0, opacity: 0.7 }}>(optional)</span>
                           </label>
-                          <textarea rows={2} value={form.description}
+                          <textarea
+                            rows={2} value={form.description}
                             onChange={e => setForm({ ...form, description: e.target.value })}
                             placeholder="Why does this habit matter?"
                             style={{ ...inputStyle, resize: 'none' }}
@@ -284,23 +303,57 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                           />
                         </div>
 
+                        {/* ── Goal assignment — only shown if goals exist ── */}
+                        {goals && goals.length > 0 && (
+                          <div>
+                            <label style={labelStyle}>
+                              Assign to goal{' '}
+                              <span style={{ textTransform: 'none', fontWeight: 400, letterSpacing: 0, opacity: 0.7 }}>(optional)</span>
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <select
+                                value={form.macro_goal_id}
+                                onChange={e => setForm({ ...form, macro_goal_id: e.target.value })}
+                                style={{
+                                  ...inputStyle,
+                                  paddingRight: '32px',
+                                  appearance: 'none',
+                                  cursor: 'pointer',
+                                  colorScheme: 'dark',
+                                }}
+                                onFocus={e => e.target.style.borderColor = 'var(--color-primary-border)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                              >
+                                <option value="">No goal — standalone habit</option>
+                                {goals.map(goal => (
+                                  <option key={goal.id} value={goal.id}>
+                                    {goal.emoji} {goal.title}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown
+                                size={12}
+                                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-3)', pointerEvents: 'none' }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Tracking type */}
                         <div>
-                          <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
-                            Tracking type
-                          </label>
+                          <label style={{ ...labelStyle, marginBottom: '8px' }}>Tracking type</label>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                             {[
-                              { value: 'boolean', label: 'Yes / No',  icon: CheckSquare, desc: 'Did you do it?' },
-                              { value: 'numeric', label: 'Measure',   icon: Hash,        desc: 'Track a quantity' },
+                              { value: 'boolean', label: 'Yes / No', icon: CheckSquare, desc: 'Did you do it?' },
+                              { value: 'numeric', label: 'Measure',  icon: Hash,        desc: 'Track a quantity' },
                             ].map(({ value, label, icon: Icon, desc }) => {
                               const active = form.metric_type === value;
                               return (
                                 <button key={value} type="button"
                                   onClick={() => setForm({ ...form, metric_type: value })}
                                   style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderRadius: '12px',
-                                    textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
+                                    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px',
+                                    borderRadius: '12px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
                                     background: active ? 'rgba(184,115,51,0.1)' : 'var(--color-stone)',
                                     border: `1px solid ${active ? 'rgba(184,115,51,0.3)' : 'var(--color-border)'}`,
                                     color: active ? 'var(--color-text-1)' : 'var(--color-text-3)',
@@ -320,17 +373,17 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                         {/* Numeric fields */}
                         <AnimatePresence>
                           {form.metric_type === 'numeric' && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
                               style={{ display: 'flex', gap: '12px', overflow: 'hidden' }}
                             >
                               {/* Daily goal */}
                               <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
-                                  Daily goal
-                                </label>
+                                <label style={labelStyle}>Daily goal</label>
                                 <div className="relative">
-                                  <input type="number" required min="0" step="any"
+                                  <input
+                                    type="number" required min="0" step="any"
                                     value={form.target_value}
                                     onChange={e => setForm({ ...form, target_value: e.target.value })}
                                     placeholder="1"
@@ -338,6 +391,7 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                                     onFocus={e => e.target.style.borderColor = 'var(--color-primary-border)'}
                                     onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                   />
+                                  {/* Custom spinner */}
                                   <div className="absolute right-0 top-0 bottom-0 flex flex-col"
                                     style={{ width: '28px', borderLeft: '1px solid var(--color-border)' }}>
                                     <button type="button"
@@ -368,9 +422,7 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
 
                               {/* Measured in */}
                               <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
-                                  Measured in
-                                </label>
+                                <label style={labelStyle}>Measured in</label>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                                   {UNITS.map(unit => {
                                     const active = form.unit === unit;
@@ -398,7 +450,8 @@ export default function AddHabitModal({ isOpen, onClose, userId }) {
                         </AnimatePresence>
 
                         {/* Submit */}
-                        <motion.button type="submit" disabled={busy} whileTap={{ scale: 0.97 }}
+                        <motion.button
+                          type="submit" disabled={busy} whileTap={{ scale: 0.97 }}
                           style={{
                             width: '100%', padding: '12px', borderRadius: '12px', color: 'white',
                             fontWeight: 500, fontSize: '14px', display: 'flex', alignItems: 'center',

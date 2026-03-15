@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Zap } from 'lucide-react';
+import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Zap, Target } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
+
 
 const navItems = [
   { name: 'Dashboard', path: '/',          icon: LayoutDashboard },
   { name: 'Analytics', path: '/analytics', icon: BarChart2 },
+  { name: 'Goals', path: '/goals', icon: Target },
   { name: 'AI Coach',  path: '/coach',     icon: BrainCircuit },
   { name: 'Timer',     path: '/timer',     icon: Timer },
 ];
