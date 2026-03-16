@@ -74,7 +74,7 @@ function Bubble({ msg }) {
         </div>
       )}
       <div style={{
-        maxWidth: '80%',
+        maxWidth: '82%',
         padding: isUser ? '10px 14px' : '12px 16px',
         borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
         background: isUser
@@ -199,25 +199,16 @@ export default function AICoach() {
 
   const bottomRef    = useRef(null);
   const inputRef     = useRef(null);
-  const chatAreaRef  = useRef(null);
 
-  // ── Scroll to bottom on new messages ──────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // ── Load history + auto-sync + auto-analysis on mount ─────────────────────
   useEffect(() => {
     (async () => {
-      // Run all three in parallel — history, context sync, and analysis
       const [historyResult] = await Promise.allSettled([
-        // 1. Load persisted chat history
         apiClient.get(`/api/v1/chat/history/${USER_ID}`),
-
-        // 2. Silent context sync — keeps habit data fresh
         apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }),
-
-        // 3. Auto-run habit analysis so the panel is populated on arrival
         (async () => {
           setAnalysisLoading(true);
           try {
@@ -231,7 +222,6 @@ export default function AICoach() {
         })(),
       ]);
 
-      // Apply history result
       if (historyResult.status === 'fulfilled') {
         const rows = historyResult.value?.data?.data || [];
         if (rows.length > 0) {
@@ -241,12 +231,10 @@ export default function AICoach() {
           ]);
         }
       }
-
       setHistoryLoading(false);
     })();
   }, []);
 
-  // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     const msg = (text || input).trim();
     if (!msg || isLoading) return;
@@ -254,9 +242,7 @@ export default function AICoach() {
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setIsLoading(true);
     try {
-      // Re-sync context silently before every message
       await apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }).catch(() => {});
-      // The backend now persists both sides; we just display the reply
       const res = await apiClient.post('/api/v1/chat/message', { user_id: USER_ID, message: msg });
       const reply = res.data?.data?.reply || 'Something went wrong on my end.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -267,7 +253,6 @@ export default function AICoach() {
     }
   }, [input, isLoading]);
 
-  // ── Manual re-sync ─────────────────────────────────────────────────────────
   const refreshContext = useCallback(async () => {
     setEmbedLoading(true);
     try {
@@ -278,7 +263,6 @@ export default function AICoach() {
     finally { setEmbedLoading(false); }
   }, []);
 
-  // ── Clear history ──────────────────────────────────────────────────────────
   const clearHistory = useCallback(async () => {
     try {
       await apiClient.delete(`/api/v1/chat/history/${USER_ID}`);
@@ -303,21 +287,31 @@ export default function AICoach() {
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', minHeight: '500px' }}
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
     >
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexShrink: 0 }}>
-        <div>
-          <motion.h1 className="text-display"
+      {/* ── Header row — title left, actions right, never overflows ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: '8px',
+        marginBottom: '12px',
+        flexWrap: 'wrap',
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <motion.h1
+            className="text-display"
+            style={{ marginBottom: '2px' }}
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
             AI Coach
           </motion.h1>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-3)', marginTop: '3px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-3)', margin: 0 }}>
             Powered by Groq · conversation saved automatically
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginTop: '4px' }}>
-          {/* Clear history */}
+
+        {/* Action buttons — wrap to next line on very small screens */}
+        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center', paddingTop: '4px', flexWrap: 'wrap' }}>
           <AnimatePresence mode="wait">
             {clearConfirm ? (
               <motion.div key="confirm"
@@ -335,7 +329,7 @@ export default function AICoach() {
               </motion.div>
             ) : (
               <motion.button key="trash" whileTap={{ scale: 0.95 }} onClick={() => setClearConfirm(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)', transition: 'all 0.15s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)' }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,0.3)'; }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-3)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}>
                 <Trash2 size={11} />
@@ -344,7 +338,6 @@ export default function AICoach() {
             )}
           </AnimatePresence>
 
-          {/* Re-sync */}
           <motion.button whileTap={{ scale: 0.95 }} onClick={refreshContext} disabled={embedLoading}
             style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, cursor: embedLoading ? 'default' : 'pointer', background: contextRefreshed ? 'rgba(82,168,115,0.12)' : 'var(--color-stone)', color: contextRefreshed ? '#6fcf8a' : 'var(--color-text-3)', border: `1px solid ${contextRefreshed ? 'rgba(82,168,115,0.3)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
             <motion.div animate={{ rotate: embedLoading ? 360 : 0 }} transition={{ duration: 1, repeat: embedLoading ? Infinity : 0, ease: 'linear' }}>
@@ -355,34 +348,40 @@ export default function AICoach() {
         </div>
       </div>
 
-      {/* ── Main layout ── */}
+      {/* ── Context strip ── */}
+      {userStats && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+          style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          {[
+            { icon: Zap,       val: `Lv ${userStats.level}`,               color: '#b87333' },
+            { icon: Flame,     val: `${userStats.current_streak}d streak`,  color: '#e07830' },
+            { icon: BarChart2, val: `${userStats.xp} XP`,                  color: 'var(--color-primary)' },
+          ].map(({ icon: Icon, val, color }) => (
+            <div key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '8px', background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
+              <Icon size={10} style={{ color }} />
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-text-2)' }}>{val}</span>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* ── Main layout: chat left, analysis right (desktop) ── */}
       <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
 
-        {/* ── LEFT: Chat ── */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Chat column */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
-          {/* Context strip */}
-          {userStats && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-              style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
-              {[
-                { icon: Zap,      val: `Lv ${userStats.level}`,            color: '#b87333' },
-                { icon: Flame,    val: `${userStats.current_streak}d streak`, color: '#e07830' },
-                { icon: BarChart2, val: `${userStats.xp} XP`,              color: 'var(--color-primary)' },
-              ].map(({ icon: Icon, val, color }) => (
-                <div key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '8px', background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
-                  <Icon size={10} style={{ color }} />
-                  <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-text-2)' }}>{val}</span>
-                </div>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Messages area */}
-          <div ref={chatAreaRef}
-            style={{ flex: 1, overflowY: 'auto', padding: '4px 2px 8px', minHeight: 0 }}>
-
-            {/* History loading skeleton */}
+          {/* Message list — fixed height so it scrolls independently */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              minHeight: '200px',
+              maxHeight: 'calc(100dvh - 420px)',
+              padding: '4px 2px 8px',
+              marginBottom: '8px',
+            }}
+          >
             {historyLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '8px 0' }}>
                 {[1, 2, 3].map(i => (
@@ -393,12 +392,9 @@ export default function AICoach() {
                 ))}
               </div>
             ) : (
-              messages.map((msg, i) => (
-                <Bubble key={msg.id || i} msg={msg} />
-              ))
+              messages.map((msg, i) => <Bubble key={msg.id || i} msg={msg} />)
             )}
 
-            {/* Typing indicator */}
             <AnimatePresence>
               {isLoading && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -407,9 +403,7 @@ export default function AICoach() {
                     <BrainCircuit size={13} color="#fff" />
                   </div>
                   <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                    <TypingDot delay={0} />
-                    <TypingDot delay={0.15} />
-                    <TypingDot delay={0.3} />
+                    <TypingDot delay={0} /><TypingDot delay={0.15} /><TypingDot delay={0.3} />
                   </div>
                 </motion.div>
               )}
@@ -418,11 +412,11 @@ export default function AICoach() {
           </div>
 
           {/* Quick prompts */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
             {QUICK_PROMPTS.map(({ icon, text }) => (
               <motion.button key={text} whileTap={{ scale: 0.95 }}
                 onClick={() => sendMessage(text)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 500, cursor: 'pointer', background: 'var(--color-stone)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', transition: 'all 0.15s', whiteSpace: 'nowrap' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 500, cursor: 'pointer', background: 'var(--color-stone)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary-border)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-2)'; }}
               >
@@ -432,7 +426,7 @@ export default function AICoach() {
           </div>
 
           {/* Input */}
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <div style={{ flex: 1, position: 'relative' }}>
               <input
                 ref={inputRef}
@@ -457,7 +451,7 @@ export default function AICoach() {
           </div>
         </div>
 
-        {/* ── RIGHT: Analysis panel (desktop) ── */}
+        {/* Analysis panel — desktop only */}
         <div className="hidden md:block" style={{ width: '280px', flexShrink: 0, overflowY: 'auto' }}>
           <AnalysisSection analysis={analysis} loading={analysisLoading} onRefresh={loadAnalysis} />
 
