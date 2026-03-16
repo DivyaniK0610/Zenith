@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, RotateCcw, Coffee, BrainCircuit,
   Zap, Check, ChevronDown, Loader2, Clock,
-  Settings, X, Plus, Minus, Volume2, VolumeX,
+  Settings, X, Plus, Minus,
   Maximize2, Minimize2, StickyNote, SkipForward, Bell,
+  Music, VolumeX, Volume1, Volume2,
 } from 'lucide-react';
 import { useHabitStore } from '../store/habitStore';
 import { logPomodoroSession } from '../api/habits';
@@ -45,10 +46,87 @@ const MODES = {
 
 const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
+// ── Ambient sound engine using Web Audio API ──────────────────────────────────
+// Replace AmbientSoundEngine class entirely with this:
+const AMBIENT_SOUNDS = [
+  { id: 'off',    label: 'Off',     icon: '○', file: null },
+  { id: 'rain',   label: 'Rain',    icon: '🌧', file: '/sounds/rain.mp3' },
+  { id: 'forest', label: 'Forest',  icon: '🌿', file: '/sounds/forest.mp3' },
+  { id: 'cafe',   label: 'Café',    icon: '☕', file: '/sounds/cafe.mp3' },
+  { id: 'white',  label: 'Brown',   icon: '〜', file: '/sounds/brown-noise.mp3' },
+  { id: 'fire',   label: 'Fire',    icon: '🔥', file: '/sounds/fireplace.mp3' },
+];
+
+class AmbientSoundEngine {
+  constructor() {
+    this.audio = null;
+    this.currentSound = 'off';
+    this.volume = 0.5;
+  }
+
+  play(soundId) {
+    // Stop current
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.src = '';
+      this.audio = null;
+    }
+    this.currentSound = soundId;
+    if (soundId === 'off') return;
+
+    const sound = AMBIENT_SOUNDS.find(s => s.id === soundId);
+    if (!sound?.file) return;
+
+    this.audio = new Audio(sound.file);
+    this.audio.loop = true;
+    this.audio.volume = this.volume;
+
+    // Fade in
+    this.audio.volume = 0;
+    this.audio.play().catch(() => {});
+    let vol = 0;
+    const fadeIn = setInterval(() => {
+      vol = Math.min(vol + 0.05, this.volume);
+      if (this.audio) this.audio.volume = vol;
+      if (vol >= this.volume) clearInterval(fadeIn);
+    }, 50);
+  }
+
+  setVolume(vol) {
+    this.volume = vol;
+    if (this.audio) this.audio.volume = vol;
+  }
+
+  stop() {
+    if (this.audio) {
+      // Fade out
+      const fadeOut = setInterval(() => {
+        if (!this.audio) { clearInterval(fadeOut); return; }
+        this.audio.volume = Math.max(0, this.audio.volume - 0.05);
+        if (this.audio.volume <= 0) {
+          this.audio.pause();
+          this.audio.src = '';
+          this.audio = null;
+          clearInterval(fadeOut);
+        }
+      }, 40);
+    }
+    this.currentSound = 'off';
+  }
+}
+
+
+// Singleton — persists across re-renders
+const ambientEngine = new AmbientSoundEngine();
+
+
 // ── Ring ──────────────────────────────────────────────────────────────────────
-function Ring({ progress, color, glow, size, stroke, running }) {
+function Ring({ progress, color, glow, size, stroke, running, isLight }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
+  // Track color adapts to theme
+  const trackColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
+  const tickColor  = isLight ? 'rgba(0,0,0,0.06)'  : 'rgba(255,255,255,0.06)';
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
       style={{ position:'absolute', top:0, left:0, transform:'rotate(-90deg)' }}>
@@ -58,15 +136,15 @@ function Ring({ progress, color, glow, size, stroke, running }) {
         return <line key={i}
           x1={size/2+ri*Math.cos(a)} y1={size/2+ri*Math.sin(a)}
           x2={size/2+ro*Math.cos(a)} y2={size/2+ro*Math.sin(a)}
-          stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round"/>;
+          stroke={tickColor} strokeWidth="1.5" strokeLinecap="round"/>;
       })}
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke}/>
       <motion.circle cx={size/2} cy={size/2} r={r} fill="none"
         stroke={color} strokeWidth={stroke} strokeLinecap="round"
         strokeDasharray={circ}
         animate={{ strokeDashoffset: circ*(1-progress) }}
         transition={{ duration: running ? 1 : 0.5, ease:'linear' }}
-        style={{ filter:`drop-shadow(0 0 10px ${glow})` }}/>
+        style={{ filter:`drop-shadow(0 0 8px ${glow})` }}/>
     </svg>
   );
 }
@@ -88,6 +166,111 @@ function Dots({ count, color }) {
               border: i===3?`1px solid ${color}44`:'none' }}/>
         );
       })}
+    </div>
+  );
+}
+
+// ── Ambient sound picker ──────────────────────────────────────────────────────
+function AmbientPicker({ current, onSelect, volume, onVolumeChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const active = AMBIENT_SOUNDS.find(s => s.id === current) || AMBIENT_SOUNDS[0];
+  const isPlaying = current !== 'off';
+
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      <motion.button whileTap={{ scale:0.92 }} onClick={() => setOpen(o=>!o)}
+        title="Ambient sounds"
+        style={{
+          width:'32px', height:'32px', borderRadius:'9px',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          background: isPlaying ? 'rgba(184,115,51,0.15)' : 'var(--color-stone)',
+          border: `1px solid ${isPlaying ? 'var(--color-primary-border)' : 'var(--color-border)'}`,
+          color: isPlaying ? 'var(--color-primary)' : 'var(--color-text-3)',
+          cursor:'pointer', transition:'all 0.15s',
+          position:'relative',
+        }}>
+        <Music size={13}/>
+        {isPlaying && (
+          <motion.div
+            animate={{ scale:[1,1.4,1], opacity:[0.8,0,0.8] }}
+            transition={{ duration:2, repeat:Infinity }}
+            style={{ position:'absolute', inset:'-3px', borderRadius:'12px', border:`1px solid ${MODES.focus.color}`, pointerEvents:'none' }}
+          />
+        )}
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity:0, y:-8, scale:0.96 }}
+            animate={{ opacity:1, y:0, scale:1 }}
+            exit={{ opacity:0, y:-6, scale:0.96 }}
+            transition={{ duration:0.16 }}
+            style={{
+              position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:200,
+              width:'220px', borderRadius:'14px',
+              background:'var(--color-surface-2)',
+              border:'1px solid var(--color-border)',
+              boxShadow:'0 16px 48px rgba(0,0,0,0.3)',
+              overflow:'hidden',
+            }}>
+            <div style={{ position:'absolute', inset:'0 0 auto 0', height:'1px', background:'linear-gradient(90deg,transparent,rgba(184,115,51,0.4),transparent)' }}/>
+            
+            <div style={{ padding:'10px 12px 6px' }}>
+              <div style={{ fontSize:'9px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--color-text-3)', marginBottom:'8px' }}>
+                Ambient Sounds
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'5px' }}>
+                {AMBIENT_SOUNDS.map(sound => (
+                  <motion.button key={sound.id} whileTap={{ scale:0.95 }}
+                    onClick={() => { onSelect(sound.id); }}
+                    style={{
+                      padding:'8px 10px', borderRadius:'10px', cursor:'pointer',
+                      display:'flex', alignItems:'center', gap:'7px',
+                      background: current===sound.id ? 'rgba(184,115,51,0.12)' : 'var(--color-stone)',
+                      border:`1px solid ${current===sound.id ? 'rgba(184,115,51,0.35)' : 'var(--color-border)'}`,
+                      color: current===sound.id ? 'var(--color-primary)' : 'var(--color-text-2)',
+                      fontSize:'12px', fontWeight: current===sound.id ? 600 : 400,
+                      transition:'all 0.15s',
+                    }}>
+                    <span style={{ fontSize:'14px', lineHeight:1 }}>{sound.icon}</span>
+                    {sound.label}
+                    {current===sound.id && sound.id !== 'off' && (
+                      <motion.div animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.5, repeat:Infinity }}
+                        style={{ width:'5px', height:'5px', borderRadius:'99px', background:'var(--color-primary)', marginLeft:'auto', flexShrink:0 }}/>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Volume slider — only show when a sound is active */}
+            {current !== 'off' && (
+              <div style={{ padding:'8px 12px 12px', borderTop:'1px solid var(--color-border)', marginTop:'6px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <Volume1 size={11} style={{ color:'var(--color-text-3)', flexShrink:0 }}/>
+                  <input
+                    type="range" min="0" max="1" step="0.05"
+                    value={volume}
+                    onChange={e => onVolumeChange(parseFloat(e.target.value))}
+                    style={{ flex:1, accentColor:'var(--color-primary)', cursor:'pointer' }}
+                  />
+                  <Volume2 size={11} style={{ color:'var(--color-text-3)', flexShrink:0 }}/>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -116,7 +299,7 @@ function SettingsPanel({ durations, onChange, onClose }) {
       exit={{ opacity:0,y:-8,scale:0.97 }} transition={{ duration:0.18 }}
       style={{ position:'absolute',top:'100%',right:0,zIndex:50,marginTop:'6px',width:'240px',
         borderRadius:'14px',background:'var(--color-surface-2)',border:'1px solid var(--color-border)',
-        boxShadow:'0 16px 48px rgba(0,0,0,0.55)',overflow:'hidden' }}>
+        boxShadow:'0 16px 48px rgba(0,0,0,0.3)',overflow:'hidden' }}>
       <div style={{ position:'absolute',inset:'0 0 auto 0',height:'1px',background:'linear-gradient(90deg,transparent,rgba(184,115,51,0.4),transparent)' }}/>
       <div style={{ padding:'14px 16px 10px',borderBottom:'1px solid var(--color-border)',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <span style={{ fontSize:'12px',fontWeight:600,color:'var(--color-warm-white)' }}>Durations</span>
@@ -175,19 +358,31 @@ function CompletionBanner({ mode, onStart, onDismiss }) {
   );
 }
 
-// ── Fullscreen ────────────────────────────────────────────────────────────────
-function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, onReset, onSkip, onClose }) {
+// ── Fullscreen — theme-aware ──────────────────────────────────────────────────
+function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, onReset, onSkip, onClose, isLight }) {
   const size = Math.min(window.innerWidth*0.72, 340);
   const STROKE = 9;
+
+  // Theme-aware fullscreen background
+  const fsBg = isLight
+    ? 'rgba(240,235,228,0.97)'
+    : 'rgba(10,8,6,0.97)';
+  const fsTimeColor = isLight ? '#1c1a17' : 'var(--color-warm-white)';
+
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-      style={{ position:'fixed',inset:0,zIndex:9000,background:'rgba(10,8,6,0.97)',backdropFilter:'blur(24px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'32px' }}>
-      <div style={{ position:'relative',width:`${size}px`,height:`${size}px`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+      style={{
+        position:'fixed', inset:0, zIndex:9000,
+        background: fsBg,
+        backdropFilter:'blur(24px)',
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'32px',
+      }}>
+      <div style={{ position:'relative', width:`${size}px`, height:`${size}px`, display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{ position:'absolute',inset:'12%',borderRadius:'50%',background:`radial-gradient(circle,${color}14 0%,transparent 70%)` }}/>
-        <Ring progress={progress} color={color} glow={glow} size={size} stroke={STROKE} running={running}/>
+        <Ring progress={progress} color={color} glow={glow} size={size} stroke={STROKE} running={running} isLight={isLight}/>
         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:'6px' }}>
           <span style={{ fontSize:'11px',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.12em',color }}>{MODES[mode]?.label}</span>
-          <span style={{ fontFamily:'var(--font-mono)',fontSize:'68px',fontWeight:700,letterSpacing:'-0.05em',color:'var(--color-warm-white)',lineHeight:1 }}>{fmt(timeLeft)}</span>
+          <span style={{ fontFamily:'var(--font-mono)',fontSize:'68px',fontWeight:700,letterSpacing:'-0.05em',color: timeLeft===0 ? color : fsTimeColor,lineHeight:1 }}>{fmt(timeLeft)}</span>
           {running && <motion.div animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.8,repeat:Infinity }}
             style={{ width:'6px',height:'6px',borderRadius:'99px',background:color,boxShadow:`0 0 8px ${color}` }}/>}
         </div>
@@ -195,19 +390,35 @@ function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, 
       <div style={{ display:'flex',alignItems:'center',gap:'16px' }}>
         {[
           { icon:<RotateCcw size={20}/>, action:onReset },
-          { icon: running?<Pause size={32} color="#fff" fill="#fff"/>:<Play size={32} color="#fff" fill="#fff" style={{marginLeft:'4px'}}/>,
-            action:onToggle, big:true },
+          null,
           { icon:<SkipForward size={20}/>, action:onSkip },
-        ].map(({ icon, action, big }, i) => (
-          <motion.button key={i} whileTap={{ scale:0.93 }} onClick={action}
-            style={ big
-              ? { width:'80px',height:'80px',borderRadius:'24px',display:'flex',alignItems:'center',justifyContent:'center',background:`linear-gradient(135deg,${color},${color}cc)`,border:`1px solid ${color}44`,cursor:'pointer',boxShadow:`0 8px 32px ${glow}` }
-              : { width:'52px',height:'52px',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.55)',cursor:'pointer' }
-            }>{icon}</motion.button>
+        ].map((btn, i) => btn ? (
+          <motion.button key={i} whileTap={{ scale:0.93 }} onClick={btn.action}
+            style={{ width:'52px',height:'52px',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',
+              background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+              border: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+              color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.55)',cursor:'pointer' }}>
+            {btn.icon}
+          </motion.button>
+        ) : (
+          <motion.button key="play" whileTap={{ scale:0.94 }} onClick={onToggle}
+            style={{ width:'80px',height:'80px',borderRadius:'24px',display:'flex',alignItems:'center',justifyContent:'center',background:`linear-gradient(135deg,${color},${color}cc)`,border:`1px solid ${color}55`,cursor:'pointer',boxShadow:running?`0 8px 28px ${glow}`:`0 4px 16px ${glow}`,position:'relative',overflow:'hidden' }}>
+            <div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,0.14) 0%,transparent 60%)',pointerEvents:'none' }}/>
+            <AnimatePresence mode="wait">
+              {running
+                ? <motion.div key="p" initial={{ scale:0.5,opacity:0 }} animate={{ scale:1,opacity:1 }} exit={{ scale:0.5,opacity:0 }}><Pause size={28} color="#fff" fill="#fff"/></motion.div>
+                : <motion.div key="pl" initial={{ scale:0.5,opacity:0 }} animate={{ scale:1,opacity:1 }} exit={{ scale:0.5,opacity:0 }}><Play size={28} color="#fff" fill="#fff" style={{ marginLeft:'3px' }}/></motion.div>
+              }
+            </AnimatePresence>
+          </motion.button>
         ))}
       </div>
       <button onClick={onClose}
-        style={{ position:'fixed',top:'20px',right:'20px',width:'40px',height:'40px',borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.08)',color:'rgba(255,255,255,0.6)',cursor:'pointer' }}>
+        style={{ position:'fixed',top:'20px',right:'20px',width:'40px',height:'40px',borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',
+          background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+          border: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+          color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)',
+          cursor:'pointer' }}>
         <Minimize2 size={16}/>
       </button>
     </motion.div>
@@ -229,7 +440,7 @@ function HabitPicker({ habits, selected, onSelect }) {
   return (
     <div ref={ref} style={{ position:'relative',width:'100%' }}>
       <button onClick={() => setOpen(o=>!o)}
-        style={{ width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',padding:'10px 13px',borderRadius:'11px',cursor:'pointer',background:open?'var(--color-surface-2)':'var(--color-stone)',border:`1px solid ${open?'var(--color-primary-border)':'var(--color-border)'}`,fontSize:'13px',fontFamily:'var(--font-sans)',transition:'all 0.15s' }}>
+        style={{ width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',padding:'10px 13px',borderRadius:'11px',cursor:'pointer',background:open?'var(--color-surface-2)':'var(--color-stone)',border:`1px solid ${open?'var(--color-primary-border)':'var(--color-border)'}`,fontSize:'13px',fontFamily:'var(--font-sans)',transition:'all 0.15s',color:'var(--color-text-1)' }}>
         <span style={{ color:sel?'var(--color-text-1)':'var(--color-text-3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'left' }}>
           {sel ? sel.title : 'No habit — freestyle'}
         </span>
@@ -241,7 +452,7 @@ function HabitPicker({ habits, selected, onSelect }) {
         {open && (
           <motion.div initial={{ opacity:0,y:-6,scale:0.97 }} animate={{ opacity:1,y:0,scale:1 }}
             exit={{ opacity:0,y:-4,scale:0.97 }} transition={{ duration:0.14 }}
-            style={{ position:'absolute',bottom:'calc(100% + 6px)',left:0,right:0,zIndex:40,borderRadius:'12px',background:'var(--color-surface-2)',border:'1px solid var(--color-border)',boxShadow:'0 -16px 40px rgba(0,0,0,0.5)',overflow:'hidden',maxHeight:'190px',overflowY:'auto' }}>
+            style={{ position:'absolute',bottom:'calc(100% + 6px)',left:0,right:0,zIndex:40,borderRadius:'12px',background:'var(--color-surface-2)',border:'1px solid var(--color-border)',boxShadow:'0 -16px 40px rgba(0,0,0,0.15)',overflow:'hidden',maxHeight:'190px',overflowY:'auto' }}>
             <button onClick={() => { onSelect(null); setOpen(false); }}
               style={{ width:'100%',padding:'10px 14px',fontSize:'12px',textAlign:'left',cursor:'pointer',background:!selected?'rgba(184,115,51,0.06)':'transparent',color:!selected?'var(--color-primary)':'var(--color-text-3)',borderBottom:'1px solid var(--color-border)',border:'none',fontFamily:'var(--font-sans)' }}>
               No habit — freestyle
@@ -249,7 +460,7 @@ function HabitPicker({ habits, selected, onSelect }) {
             {avail.map((h,i) => (
               <button key={h.id} onClick={() => { onSelect(h.id); setOpen(false); }}
                 style={{ width:'100%',padding:'10px 14px',fontSize:'12px',textAlign:'left',cursor:'pointer',background:selected===h.id?'rgba(184,115,51,0.08)':'transparent',color:'var(--color-text-2)',borderBottom:i<avail.length-1?'1px solid var(--color-border)':'none',border:'none',fontFamily:'var(--font-sans)',display:'flex',justifyContent:'space-between',alignItems:'center' }}
-                onMouseEnter={e=>{ if(selected!==h.id) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
+                onMouseEnter={e=>{ if(selected!==h.id) e.currentTarget.style.background='rgba(184,115,51,0.04)'; }}
                 onMouseLeave={e=>{ if(selected!==h.id) e.currentTarget.style.background='transparent'; }}>
                 <span style={{ overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1 }}>{h.title}</span>
                 {selected===h.id && <Check size={11} style={{ color:'var(--color-primary)',flexShrink:0 }}/>}
@@ -334,6 +545,22 @@ export default function Timer() {
   const [muted,          setMuted]       = useState(false);
   const [completion,     setCompletion]  = useState(null);
 
+  // Ambient sound state
+  const [ambientSound,   setAmbientSound]   = useState('off');
+  const [ambientVolume,  setAmbientVolume]  = useState(0.4);
+
+  // Detect light theme
+  const [isLight, setIsLight] = useState(() =>
+    document.documentElement.getAttribute('data-theme') === 'light'
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsLight(document.documentElement.getAttribute('data-theme') === 'light');
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   const timerRef   = useRef(null);
   const settRef    = useRef(null);
   const [ringSize, setRingSize] = useState(260);
@@ -368,6 +595,21 @@ export default function Timer() {
     return () => document.removeEventListener('mousedown', h);
   }, [showSettings]);
 
+  // Cleanup ambient on unmount
+  useEffect(() => {
+    return () => { ambientEngine.stop(); };
+  }, []);
+
+  const handleAmbientSelect = useCallback((soundId) => {
+    setAmbientSound(soundId);
+    ambientEngine.play(soundId);
+  }, []);
+
+  const handleAmbientVolume = useCallback((vol) => {
+    setAmbientVolume(vol);
+    ambientEngine.setVolume(vol);
+  }, []);
+
   const focusSessions  = sessions.filter(s => s.mode==='focus');
   const totalFocusMin  = focusSessions.reduce((a,s)=>a+s.duration, 0);
   const uniqueHabits   = [...new Set(focusSessions.filter(s=>s.habitId).map(s=>s.habitId))].length;
@@ -378,7 +620,14 @@ export default function Timer() {
     return (focusSessions.length+1) % 4 === 0 ? 'long_break' : 'short_break';
   }, [focusSessions.length]);
 
+  // Guard against React StrictMode double-invocation
+  const completionGuard = useRef(false);
+
   const handleComplete = useCallback(async (completedMode) => {
+    if (completionGuard.current) return;
+    completionGuard.current = true;
+    setTimeout(() => { completionGuard.current = false; }, 2000);
+
     const dur = durations[completedMode];
     if (!muted) playSuccess();
     if (Notification.permission === 'granted') {
@@ -389,7 +638,9 @@ export default function Timer() {
     }
     const habitTitle = habits.find(h=>h.id===selectedHabit)?.title || null;
     const newSession = {
-      id: Date.now(), mode: completedMode, duration: dur,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      mode: completedMode,
+      duration: dur,
       habitId: completedMode==='focus' ? selectedHabit : null,
       habitTitle: completedMode==='focus' ? habitTitle : null,
       note: completedMode==='focus' ? note : '',
@@ -412,6 +663,7 @@ export default function Timer() {
 
   useEffect(() => {
     if (!running) return;
+    completionGuard.current = false; // reset for new session
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -439,6 +691,16 @@ export default function Timer() {
 
   const STROKE = 8;
 
+  // Theme-aware ring background gradient
+  const ringBgGradient = isLight
+    ? `radial-gradient(circle,${m.color}08 0%,transparent 70%)`
+    : `radial-gradient(circle,${m.color}10 0%,transparent 70%)`;
+
+  // Time display color
+  const timeColor = isLight
+    ? (timeLeft===0 ? m.color : '#1c1a17')
+    : (timeLeft===0 ? m.color : 'var(--color-warm-white)');
+
   return (
     <>
       <AnimatePresence>
@@ -446,7 +708,8 @@ export default function Timer() {
           <Fullscreen mode={mode} timeLeft={timeLeft} progress={progressVal}
             running={running} color={m.color} glow={m.glow}
             onToggle={toggle} onReset={reset} onSkip={skip}
-            onClose={() => setShowFull(false)}/>
+            onClose={() => setShowFull(false)}
+            isLight={isLight}/>
         )}
       </AnimatePresence>
 
@@ -462,20 +725,40 @@ export default function Timer() {
             </p>
           </div>
           <div style={{ display:'flex',gap:'6px',flexShrink:0,marginTop:'4px',alignItems:'center' }}>
-            {/* Notification */}
+
+            {/* Notification bell */}
             <motion.button whileTap={{ scale:0.92 }} onClick={() => Notification.requestPermission()} title="Enable notifications"
-              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',background:Notification.permission==='granted'?'rgba(82,168,115,0.12)':'var(--color-stone)',border:`1px solid ${Notification.permission==='granted'?'rgba(82,168,115,0.3)':'var(--color-border)'}`,color:Notification.permission==='granted'?'#6fcf8a':'var(--color-text-3)',cursor:'pointer' }}>
+              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',
+                background:Notification.permission==='granted'?'rgba(82,168,115,0.12)':'var(--color-stone)',
+                border:`1px solid ${Notification.permission==='granted'?'rgba(82,168,115,0.3)':'var(--color-border)'}`,
+                color:Notification.permission==='granted'?'#52a873':'var(--color-text-3)',cursor:'pointer' }}>
               <Bell size={13}/>
             </motion.button>
-            {/* Mute */}
+
+            {/* Ambient sound picker — replaces old mute button */}
+            <AmbientPicker
+              current={ambientSound}
+              onSelect={handleAmbientSelect}
+              volume={ambientVolume}
+              onVolumeChange={handleAmbientVolume}
+            />
+
+            {/* Mute completion chime */}
             <motion.button whileTap={{ scale:0.92 }} onClick={() => setMuted(m=>!m)}
-              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--color-stone)',border:'1px solid var(--color-border)',color:muted?'#f87171':'var(--color-text-3)',cursor:'pointer' }}>
+              title={muted ? 'Unmute completion sound' : 'Mute completion sound'}
+              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',
+                background:'var(--color-stone)',border:'1px solid var(--color-border)',
+                color:muted?'#f87171':'var(--color-text-3)',cursor:'pointer' }}>
               {muted ? <VolumeX size={13}/> : <Volume2 size={13}/>}
             </motion.button>
+
             {/* Settings */}
             <div ref={settRef} style={{ position:'relative' }}>
               <motion.button whileTap={{ scale:0.92 }} onClick={() => setShowSettings(o=>!o)}
-                style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',background:showSettings?'rgba(184,115,51,0.12)':'var(--color-stone)',border:`1px solid ${showSettings?'var(--color-primary-border)':'var(--color-border)'}`,color:showSettings?'var(--color-primary)':'var(--color-text-3)',cursor:'pointer' }}>
+                style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',
+                  background:showSettings?'rgba(184,115,51,0.12)':'var(--color-stone)',
+                  border:`1px solid ${showSettings?'var(--color-primary-border)':'var(--color-border)'}`,
+                  color:showSettings?'var(--color-primary)':'var(--color-text-3)',cursor:'pointer' }}>
                 <Settings size={13}/>
               </motion.button>
               <AnimatePresence>
@@ -486,9 +769,12 @@ export default function Timer() {
                 )}
               </AnimatePresence>
             </div>
+
             {/* Fullscreen */}
             <motion.button whileTap={{ scale:0.92 }} onClick={() => setShowFull(true)}
-              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--color-stone)',border:'1px solid var(--color-border)',color:'var(--color-text-3)',cursor:'pointer' }}>
+              style={{ width:'32px',height:'32px',borderRadius:'9px',display:'flex',alignItems:'center',justifyContent:'center',
+                background:'var(--color-stone)',border:'1px solid var(--color-border)',
+                color:'var(--color-text-3)',cursor:'pointer' }}>
               <Maximize2 size={13}/>
             </motion.button>
           </div>
@@ -498,7 +784,19 @@ export default function Timer() {
         <div style={{ display:'flex',gap:'5px',padding:'4px',background:'var(--color-stone)',borderRadius:'14px',border:'1px solid var(--color-border)',marginBottom:'24px' }}>
           {Object.entries(MODES).map(([key, mod]) => (
             <motion.button key={key} onClick={() => switchMode(key)} whileTap={{ scale:0.96 }}
-              style={{ flex:1,padding:'8px 8px',borderRadius:'10px',fontSize:'12px',fontWeight:600,cursor:'pointer',transition:'all 0.18s',textAlign:'center',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',background:mode===key?'var(--color-surface-2)':'transparent',color:mode===key?mod.color:'var(--color-text-3)',border:mode===key?`1px solid ${mod.color}44`:'1px solid transparent',boxShadow:mode===key?`0 2px 10px ${mod.color}20`:'none' }}>
+              style={{
+                flex:1, padding:'8px 8px', borderRadius:'10px', fontSize:'12px', fontWeight:600,
+                cursor:'pointer', transition:'all 0.18s', textAlign:'center',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                background: mode===key ? 'var(--color-surface-2)' : 'transparent',
+                color: mode===key ? mod.color : 'var(--color-text-3)',
+                border: mode===key ? `1px solid ${mod.color}44` : '1px solid transparent',
+                boxShadow: mode===key
+                  ? isLight
+                    ? `0 2px 8px ${mod.color}20, 0 1px 0 rgba(255,255,255,0.8) inset`
+                    : `0 2px 10px ${mod.color}20`
+                  : 'none',
+              }}>
               {mod.label}
             </motion.button>
           ))}
@@ -522,8 +820,8 @@ export default function Timer() {
 
             {/* Ring */}
             <div style={{ position:'relative',width:`${ringSize}px`,height:`${ringSize}px`,display:'flex',alignItems:'center',justifyContent:'center' }}>
-              <div style={{ position:'absolute',inset:'15%',borderRadius:'50%',background:`radial-gradient(circle,${m.color}10 0%,transparent 70%)`,transition:'background 0.5s',pointerEvents:'none' }}/>
-              <Ring progress={progressVal} color={m.color} glow={m.glow} size={ringSize} stroke={STROKE} running={running}/>
+              <div style={{ position:'absolute',inset:'15%',borderRadius:'50%',background:ringBgGradient,transition:'background 0.5s',pointerEvents:'none' }}/>
+              <Ring progress={progressVal} color={m.color} glow={m.glow} size={ringSize} stroke={STROKE} running={running} isLight={isLight}/>
               <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:'5px',zIndex:1 }}>
                 <div style={{ display:'flex',alignItems:'center',gap:'5px' }}>
                   {mode==='focus' ? <BrainCircuit size={11} style={{ color:m.color }}/> : <Coffee size={11} style={{ color:m.color }}/>}
@@ -532,7 +830,16 @@ export default function Timer() {
                 <motion.div
                   key={`${mode}-${Math.floor(timeLeft/60)}`}
                   initial={{ scale:1.04 }} animate={{ scale:1 }} transition={{ duration:0.14 }}
-                  style={{ fontFamily:'var(--font-mono)',fontSize:ringSize<230?'44px':'52px',fontWeight:700,letterSpacing:'-0.04em',color:timeLeft===0?m.color:'var(--color-warm-white)',lineHeight:1,textShadow:timeLeft===0?`0 0 30px ${m.color}70`:'none',transition:'color 0.3s,text-shadow 0.3s' }}>
+                  style={{
+                    fontFamily:'var(--font-mono)',
+                    fontSize:ringSize<230?'44px':'52px',
+                    fontWeight:700,
+                    letterSpacing:'-0.04em',
+                    color: timeColor,
+                    lineHeight:1,
+                    textShadow:timeLeft===0?`0 0 30px ${m.color}70`:'none',
+                    transition:'color 0.3s,text-shadow 0.3s',
+                  }}>
                   {fmt(timeLeft)}
                 </motion.div>
                 <span style={{ fontSize:'10px',color:'var(--color-text-3)',fontFamily:'var(--font-mono)' }}>
@@ -553,14 +860,20 @@ export default function Timer() {
                 { icon:<SkipForward size={16}/>, action:skip, title:'Skip' },
               ].map((btn, i) => btn ? (
                 <motion.button key={i} whileTap={{ scale:0.9 }} onClick={btn.action} title={btn.title}
-                  style={{ width:'46px',height:'46px',borderRadius:'14px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--color-stone)',border:'1px solid var(--color-border)',color:'var(--color-text-3)',cursor:'pointer',transition:'all 0.15s' }}
+                  style={{ width:'46px',height:'46px',borderRadius:'14px',display:'flex',alignItems:'center',justifyContent:'center',
+                    background:'var(--color-stone)',border:'1px solid var(--color-border)',
+                    color:'var(--color-text-3)',cursor:'pointer',transition:'all 0.15s' }}
                   onMouseEnter={e=>{ e.currentTarget.style.background='var(--color-stone-light)'; e.currentTarget.style.color='var(--color-text-2)'; }}
                   onMouseLeave={e=>{ e.currentTarget.style.background='var(--color-stone)'; e.currentTarget.style.color='var(--color-text-3)'; }}>
                   {btn.icon}
                 </motion.button>
               ) : (
                 <motion.button key="play" whileTap={{ scale:0.94 }} onClick={toggle}
-                  style={{ width:'76px',height:'76px',borderRadius:'24px',display:'flex',alignItems:'center',justifyContent:'center',background:`linear-gradient(135deg,${m.color},${m.color}cc)`,border:`1px solid ${m.color}55`,cursor:'pointer',boxShadow:running?`0 8px 28px ${m.glow}`:`0 4px 16px ${m.glow}`,position:'relative',overflow:'hidden',transition:'box-shadow 0.3s' }}>
+                  style={{ width:'76px',height:'76px',borderRadius:'24px',display:'flex',alignItems:'center',justifyContent:'center',
+                    background:`linear-gradient(135deg,${m.color},${m.color}cc)`,
+                    border:`1px solid ${m.color}55`,cursor:'pointer',
+                    boxShadow:running?`0 8px 28px ${m.glow}`:`0 4px 16px ${m.glow}`,
+                    position:'relative',overflow:'hidden',transition:'box-shadow 0.3s' }}>
                   <div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,0.14) 0%,transparent 60%)',pointerEvents:'none' }}/>
                   <AnimatePresence mode="wait">
                     {running
@@ -580,13 +893,33 @@ export default function Timer() {
               </span>
             </div>
 
+            {/* Ambient sound indicator */}
+            {ambientSound !== 'off' && (
+              <motion.div initial={{ opacity:0,y:4 }} animate={{ opacity:1,y:0 }}
+                style={{ display:'flex',alignItems:'center',gap:'8px',padding:'8px 14px',borderRadius:'10px',
+                  background:'rgba(184,115,51,0.08)',border:'1px solid rgba(184,115,51,0.2)',width:'100%',
+                  justifyContent:'space-between' }}>
+                <div style={{ display:'flex',alignItems:'center',gap:'7px' }}>
+                  <motion.div animate={{ opacity:[0.5,1,0.5] }} transition={{ duration:2,repeat:Infinity }}>
+                    <Music size={11} style={{ color:'var(--color-primary)' }}/>
+                  </motion.div>
+                  <span style={{ fontSize:'11px',color:'var(--color-primary)',fontWeight:500 }}>
+                    {AMBIENT_SOUNDS.find(s=>s.id===ambientSound)?.icon} {AMBIENT_SOUNDS.find(s=>s.id===ambientSound)?.label} playing
+                  </span>
+                </div>
+                <button onClick={() => handleAmbientSelect('off')}
+                  style={{ background:'none',border:'none',cursor:'pointer',color:'var(--color-text-3)',display:'flex',padding:'2px' }}>
+                  <X size={11}/>
+                </button>
+              </motion.div>
+            )}
+
             {/* Habit + note */}
             <div style={{ width:'100%',display:'flex',flexDirection:'column',gap:'8px' }}>
               <div style={{ fontSize:'10px',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.08em',color:'var(--color-text-3)',display:'flex',alignItems:'center',gap:'5px' }}>
                 <Zap size={10} style={{ color:'var(--color-primary)' }}/> Log to habit
               </div>
               <HabitPicker habits={habits} selected={selectedHabit} onSelect={setSelected}/>
-              {/* Note input */}
               <div style={{ position:'relative' }}>
                 <StickyNote size={12} style={{ position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',color:'var(--color-text-3)',pointerEvents:'none' }}/>
                 <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Session note…" maxLength={120}
@@ -632,7 +965,7 @@ export default function Timer() {
               ) : (
                 <div style={{ display:'flex',flexDirection:'column',gap:'6px' }}>
                   <AnimatePresence>
-                    {sessions.slice(0,8).map((s,i)=><SessionItem key={s.id} session={s} i={i}/>)}
+                    {sessions.slice(0,8).map((s,i)=><SessionItem key={`${s.id}-${i}`} session={s} i={i}/>)}
                   </AnimatePresence>
                   {sessions.length>8 && <p style={{ fontSize:'10px',color:'var(--color-text-3)',textAlign:'center',margin:0 }}>+{sessions.length-8} more</p>}
                 </div>

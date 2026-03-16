@@ -197,10 +197,14 @@ export default function AICoach() {
   const [contextRefreshed, setContextRefreshed] = useState(false);
   const [clearConfirm, setClearConfirm]       = useState(false);
 
-  const bottomRef    = useRef(null);
-  const inputRef     = useRef(null);
+  const bottomRef       = useRef(null);
+  const inputRef        = useRef(null);
+  // Only auto-scroll when the USER sends a message — never on history load
+  const shouldScrollRef = useRef(false);
 
   useEffect(() => {
+    if (!shouldScrollRef.current) return;
+    shouldScrollRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
@@ -229,6 +233,7 @@ export default function AICoach() {
             WELCOME_MESSAGE,
             ...rows.map(r => ({ role: r.role, content: r.content, id: r.id })),
           ]);
+          // No auto-scroll on history load — user should see the page header first
         }
       }
       setHistoryLoading(false);
@@ -239,14 +244,16 @@ export default function AICoach() {
     const msg = (text || input).trim();
     if (!msg || isLoading) return;
     setInput('');
+    shouldScrollRef.current = true; // scroll down only on user-initiated messages
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setIsLoading(true);
     try {
-      await apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }).catch(() => {});
       const res = await apiClient.post('/api/v1/chat/message', { user_id: USER_ID, message: msg });
       const reply = res.data?.data?.reply || 'Something went wrong on my end.';
+      shouldScrollRef.current = true; // scroll to show AI reply
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
+      shouldScrollRef.current = true;
       setMessages(prev => [...prev, { role: 'assistant', content: 'Lost connection — check your network and retry.' }]);
     } finally {
       setIsLoading(false);
@@ -287,9 +294,8 @@ export default function AICoach() {
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
     >
-      {/* ── Header row — title left, actions right, never overflows ── */}
+      {/* ── Header row ── */}
       <div style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -310,7 +316,7 @@ export default function AICoach() {
           </p>
         </div>
 
-        {/* Action buttons — wrap to next line on very small screens */}
+        {/* Action buttons */}
         <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center', paddingTop: '4px', flexWrap: 'wrap' }}>
           <AnimatePresence mode="wait">
             {clearConfirm ? (
@@ -366,22 +372,13 @@ export default function AICoach() {
       )}
 
       {/* ── Main layout: chat left, analysis right (desktop) ── */}
-      <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
 
-        {/* Chat column */}
+        {/* Chat column — natural flow, no fixed heights */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
-          {/* Message list — fixed height so it scrolls independently */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              minHeight: '200px',
-              maxHeight: 'calc(100dvh - 420px)',
-              padding: '4px 2px 8px',
-              marginBottom: '8px',
-            }}
-          >
+          {/* Message list — natural height, no maxHeight constraint */}
+          <div style={{ marginBottom: '10px' }}>
             {historyLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '8px 0' }}>
                 {[1, 2, 3].map(i => (
@@ -392,7 +389,9 @@ export default function AICoach() {
                 ))}
               </div>
             ) : (
-              messages.map((msg, i) => <Bubble key={msg.id || i} msg={msg} />)
+              <div style={{ padding: '4px 2px 0' }}>
+                {messages.map((msg, i) => <Bubble key={msg.id || i} msg={msg} />)}
+              </div>
             )}
 
             <AnimatePresence>
@@ -426,7 +425,7 @@ export default function AICoach() {
           </div>
 
           {/* Input */}
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
             <div style={{ flex: 1, position: 'relative' }}>
               <input
                 ref={inputRef}
@@ -452,7 +451,7 @@ export default function AICoach() {
         </div>
 
         {/* Analysis panel — desktop only */}
-        <div className="hidden md:block" style={{ width: '280px', flexShrink: 0, overflowY: 'auto' }}>
+        <div className="hidden md:block" style={{ width: '280px', flexShrink: 0 }}>
           <AnalysisSection analysis={analysis} loading={analysisLoading} onRefresh={loadAnalysis} />
 
           <div style={{ borderRadius: '14px', padding: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>

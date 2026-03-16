@@ -126,10 +126,12 @@ function SettingsButton() {
         style={{
           width: '34px', height: '34px', borderRadius: '10px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: open ? 'rgba(184,115,51,0.12)' : 'var(--color-stone)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'var(--color-border)'}`,
+          background: open ? 'rgba(184,115,51,0.12)' : 'rgba(0,0,0,0.35)',
+          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
           color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
           cursor: 'pointer', transition: 'all 0.15s',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
         <AnimatePresence mode="wait">
@@ -187,33 +189,41 @@ function AppInner() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
 
         {/*
-          Mobile-only top bar.
-          - Only rendered when isMobile is true (JS-gated, not CSS-only).
-          - Zero background so it's fully transparent — just the gear button floats.
-          - Fixed height (48px) reserves space so page content starts below it.
-          - No border, no background color.
+          Mobile-only top bar — FIXED positioned so it floats above content
+          without consuming flex space. Content gets paddingTop to compensate.
+          Fully transparent background — backdrop blur gives visual separation.
         */}
         {isMobile && (
           <div style={{
-            flexShrink: 0,
-            height: '48px',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '52px',
+            zIndex: 100,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
             paddingRight: '20px',
             paddingLeft: '20px',
+            // Fully transparent — no color strip
             background: 'transparent',
+            pointerEvents: 'none', // let touches pass through to content below
           }}>
-            <SettingsButton />
+            {/* Only the button itself captures pointer events */}
+            <div style={{ pointerEvents: 'auto' }}>
+              <SettingsButton />
+            </div>
           </div>
         )}
 
-        {/* Scrollable content */}
+        {/* Scrollable content — paddingTop accounts for fixed top bar on mobile */}
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <div style={{
             maxWidth: '1100px',
             margin: '0 auto',
-            padding: isMobile ? '16px 20px 120px 20px' : '28px 32px 48px 32px',
+            // On mobile: extra top padding so content starts below the fixed gear button
+            padding: isMobile ? '60px 20px 120px 20px' : '28px 32px 48px 32px',
           }}>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
