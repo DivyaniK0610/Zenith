@@ -109,32 +109,30 @@ function AppInner() {
 
         {/* ── Top bar: status banner + mobile avatar ── */}
         <div
-  className="w-full flex items-center flex-shrink-0"
-  style={{  minHeight: '28px', position: 'relative', overflow: 'hidden', }}
->
-  {/* Status text — always centered regardless of avatar */}
-  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', pointerEvents: 'none' }}>
-    <Activity size={10} style={{ color: s.color }} />
-    <span style={{
-      fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em',
-      textTransform: 'uppercase', color: s.color,
-    }}>
-      {backendStatus === 'connected' && 'Backend Connected'}
-      {backendStatus === 'error'     && 'Backend Disconnected — start FastAPI on port 8000'}
-      {backendStatus === 'checking'  && 'Connecting…'}
-    </span>
-  </div>
+          className="w-full flex items-center flex-shrink-0"
+          style={{ minHeight: '28px', position: 'relative', overflow: 'hidden' }}
+        >
+          {/* Status text — always centered */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', pointerEvents: 'none' }}>
+            <Activity size={10} style={{ color: s.color }} />
+            <span style={{
+              fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: s.color,
+            }}>
+              {backendStatus === 'connected' && 'Backend Connected'}
+              {backendStatus === 'error'     && 'Backend Disconnected — start FastAPI on port 8000'}
+              {backendStatus === 'checking'  && 'Connecting…'}
+            </span>
+          </div>
 
-  {/* Spacer so the bar has height even with no content */}
-  <div style={{ flex: 1, padding: '5px 0' }} />
+          <div style={{ flex: 1, padding: '5px 0' }} />
 
-  {/* Avatar — only on mobile, always anchored to the right */}
-  {isMobile && (
-    <div style={{ paddingRight: '12px', paddingTop: '12px',paddingBottom: '12px', flexShrink: 0, position: 'relative', zIndex: 1 }}>
-      <MobileUserAvatar userStats={userStats} />
-    </div>
-  )}
-</div>
+          {isMobile && (
+            <div style={{ paddingRight: '12px', paddingTop: '12px', paddingBottom: '12px', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+              <MobileUserAvatar userStats={userStats} />
+            </div>
+          )}
+        </div>
 
         <main className="flex-1 overflow-y-auto">
           <div

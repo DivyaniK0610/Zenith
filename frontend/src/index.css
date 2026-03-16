@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK THEME (default) — :root
+───────────────────────────────────────────────────────────────────────────── */
 @theme {
   /* ── Core palette ─────────────────────────────────── */
   --color-background: #0c0a08;
@@ -8,7 +11,7 @@
   --color-surface-2:  #1a1610;
   --color-surface-3:  #201c14;
 
-  /* Amber accent — richer, less orange */
+  /* Amber accent */
   --color-primary: #b07030;
   --color-primary-dim:    #8a5520;
   --color-primary-glow:   rgba(184,115,51,0.12);
@@ -27,7 +30,7 @@
   --color-text-3:     #6a5e50;
   --color-muted:      #6a5e50;
 
-  /* Semantic accents — each stat gets its own */
+  /* Semantic accents */
   --color-streak:  #e07830;
   --color-habits:  #52a873;
   --color-best:    #c9a43a;
@@ -40,6 +43,68 @@
   /* Typography */
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'DM Mono', 'Fira Code', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT THEME — [data-theme="light"]
+   Muted greige × warm ink — Notion/Superlist-inspired.
+   Key principle: surfaces are stone-grey with a whisper of warmth,
+   never bleached white. Contrast is achieved through tone, not brightness.
+───────────────────────────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  /* ── Core surfaces — cool greige stack, progressive depth ─────────────────
+     Think: uncoated paper → thick card → inset well → sunken panel.
+     All values sit in the 88-93% lightness range — perceptibly distinct
+     but never glaring.                                                       */
+  --color-background: #eceae6;   /* page canvas — cool greige, like Notion    */
+  --color-surface:    #e4e1db;   /* sidebar / panels — one step darker        */
+  --color-surface-2:  #dedad3;   /* cards, modals — inset surfaces            */
+  --color-surface-3:  #d5d1c9;   /* deepest wells — inputs, code blocks       */
+
+  /* ── Amber accent — desaturated for calm, still warm & recognisable ───── */
+  --color-primary:        #8c5c1a;   /* rich bronze-amber, not orange         */
+  --color-primary-dim:    #6e4612;   /* deeper pressed state                  */
+  --color-primary-glow:   rgba(140,92,26,0.09);
+  --color-primary-border: rgba(140,92,26,0.22);
+
+  /* ── Stone tones — greige family for chips, tags, inputs ─────────────── */
+  --color-stone:       #d5d1c9;   /* input backgrounds, quiet chips           */
+  --color-stone-mid:   #cac6bd;   /* slightly deeper — scrollbars, dividers   */
+  --color-stone-light: #bab5ab;   /* borders, separators                      */
+  --color-stone-hover: #ccc8bf;   /* hover overlay on stone                   */
+
+  /* ── Text — warm charcoal, never pure black ──────────────────────────── */
+  --color-warm-white: #1c1a17;   /* headings / display — deep charcoal-brown  */
+  --color-text-1:     #2e2b26;   /* primary body copy                         */
+  --color-text-2:     #6b6358;   /* secondary / labels                        */
+  --color-text-3:     #9a9088;   /* tertiary / placeholders                   */
+  --color-muted:      #a09890;   /* disabled, captions                        */
+
+  /* ── Semantic accents — muted to match calm palette ─────────────────── */
+  --color-streak:  #b85210;   /* muted burnt-orange                           */
+  --color-habits:  #28815a;   /* sage-forest green                            */
+  --color-best:    #9a7218;   /* antique gold                                 */
+  --color-level:   #7c4e18;   /* warm umber                                   */
+
+  /* ── Borders — subtle greige lines, warm undertone ─────────────────── */
+  --color-border:       rgba(60,50,36,0.10);
+  --color-border-hover: rgba(60,50,36,0.18);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SMOOTH THEME TRANSITION
+───────────────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* But don't animate transforms / sizes (breaks animations) */
+*[style*="transform"],
+motion,
+.framer-motion {
+  transition: none;
 }
 
 /* ── Reset ──────────────────────────────────────────── */
@@ -58,7 +123,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Grain overlay on body ──────────────────────────── */
+/* ── Grain overlay ──────────────────────────────────── */
 body::before {
   content: '';
   position: fixed;
@@ -69,6 +134,18 @@ body::before {
   opacity: 0.022;
 }
 
+/* Light mode — very subtle grain adds organic texture, reduces flat glare */
+[data-theme="light"] body::before {
+  opacity: 0.04;
+}
+
+/* Light mode — give cards a gentle shadow instead of just borders,
+   matching the depth language of Notion/Superlist */
+[data-theme="light"] .card,
+[data-theme="light"] [style*="var(--color-surface-2)"] {
+  box-shadow: 0 1px 3px rgba(60,50,36,0.07), 0 0 0 1px rgba(60,50,36,0.06);
+}
+
 /* ── Scrollbar ──────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -76,7 +153,7 @@ body::before {
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-3); }
 
 /* ── Selection ──────────────────────────────────────── */
-::selection { background: rgba(184,115,51,0.22); color: var(--color-warm-white); }
+::selection { background: rgba(154,96,32,0.22); color: var(--color-warm-white); }
 
 /* ── Typography scale ───────────────────────────────── */
 .text-display {
@@ -123,6 +200,10 @@ body::before {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
   pointer-events: none;
+}
+
+[data-theme="light"] .card::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
 }
 
 /* ── Habit card accent states ───────────────────────── */
@@ -195,6 +276,11 @@ body::before {
   animation: shimmer 2.8s ease-in-out infinite;
 }
 
+/* Light mode shimmer */
+[data-theme="light"] .xp-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+}
+
 /* ── Achievement overlay particles ─────────────────── */
 @keyframes particleFly {
   from { transform: translate(0,0) scale(1); opacity: 1; }
@@ -265,4 +351,63 @@ input[type='number']::-webkit-outer-spin-button {
 }
 input[type='number'] {
   -moz-appearance: textfield;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT THEME SPECIFIC OVERRIDES
+   Fine-tune elements that need more than CSS variable changes.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Sidebar border */
+[data-theme="light"] .h-screen[style*="border-right"] {
+  box-shadow: 2px 0 16px rgba(90,60,20,0.06);
+}
+
+/* Top status bar refinement */
+[data-theme="light"] .w-full.flex.items-center {
+  background: transparent;
+}
+
+/* Input placeholder color */
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: var(--color-text-3);
+  opacity: 0.8;
+}
+
+/* Mobile nav light theme */
+[data-theme="light"] nav[style*="fixed"][style*="bottom: 0"] {
+  background: rgba(228,225,219,0.97) !important;
+  border-top-color: rgba(60,50,36,0.10) !important;
+  box-shadow: 0 -1px 12px rgba(60,50,36,0.08);
+}
+
+/* Backdrop blur modals — ensure light bg */
+[data-theme="light"] [style*="rgba(0,0,0,0.75)"],
+[data-theme="light"] [style*="rgba(0,0,0,0.82)"],
+[data-theme="light"] [style*="rgba(0,0,0,0.65)"] {
+  background: rgba(40,28,12,0.72) !important;
+}
+
+/* Light theme — card shimmer should use warm white not rgba white */
+[data-theme="light"] [style*="rgba(255,255,255,0.06)"] {
+  /* Cards with top shimmer */
+}
+
+/* Pulse animation for skeleton */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* Date input in light mode */
+[data-theme="light"] input[type='date'] {
+  color-scheme: light;
+}
+
+/* Focus ring for accessibility */
+[data-theme="light"] button:focus-visible,
+[data-theme="light"] input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

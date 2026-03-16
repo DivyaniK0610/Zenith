@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Target } from 'lucide-react';
+import ThemeToggle from '../ThemeToggle';
 
 const navItems = [
   { name: 'Home',      path: '/',          icon: LayoutDashboard },
@@ -62,7 +63,6 @@ export default function MobileNav() {
                 />
               )}
 
-              {/* Icon wrapper — pip is anchored to this */}
               <div style={{
                 position: 'relative',
                 width: '20px', height: '20px',
@@ -106,6 +106,23 @@ export default function MobileNav() {
           )}
         </NavLink>
       ))}
+
+      {/* Theme toggle — compact icon pill, sits after nav items */}
+      <div style={{
+        flex: '0 0 auto',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', gap: '3px',
+        padding: '4px 6px',
+      }}>
+        <ThemeToggle compact />
+        <span style={{
+          fontSize: '9px', fontWeight: 600,
+          letterSpacing: '0.04em', textTransform: 'uppercase',
+          color: 'var(--color-text-3)',
+        }}>
+          Theme
+        </span>
+      </div>
     </nav>
   );
 }

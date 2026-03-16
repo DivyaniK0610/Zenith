@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Target } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
+import ThemeToggle from '../ThemeToggle';
 
 const navItems = [
   { name: 'Dashboard', path: '/',          icon: LayoutDashboard },
@@ -14,7 +15,6 @@ const navItems = [
 
 /**
  * SlateMark — three stacked horizontal slabs tapering inward.
- * Conveys "slate" (layered stone) + "stacking habits" without a letter.
  */
 function SlateMark({ size = 30 }) {
   return (
@@ -38,14 +38,10 @@ function SlateMark({ size = 30 }) {
         </linearGradient>
       </defs>
       <rect width="30" height="30" rx="8" fill="url(#sm-bg)"/>
-      {/* top edge shimmer */}
       <rect x="0" y="0" width="30" height="1" rx="0.5" fill="white" opacity="0.08"/>
-      {/* Slab 1 — widest, brightest */}
       <rect x="5"  y="7"  width="20" height="5" rx="2.5" fill="url(#sm-g1)"/>
       <rect x="5"  y="7"  width="20" height="1" rx="0.5" fill="white" opacity="0.14"/>
-      {/* Slab 2 — mid */}
       <rect x="7"  y="14" width="16" height="4.5" rx="2.25" fill="url(#sm-g2)"/>
-      {/* Slab 3 — narrowest, darkest */}
       <rect x="9"  y="20.5" width="12" height="4" rx="2" fill="url(#sm-g3)"/>
     </svg>
   );
@@ -108,8 +104,13 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Theme toggle */}
+      <div className="px-4 mb-3">
+        <ThemeToggle />
+      </div>
+
       {/* Bottom user card */}
-      <div className="mx-4 mb-5 mt-4 rounded-xl p-3"
+      <div className="mx-4 mb-5 rounded-xl p-3"
         style={{ background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-center justify-between mb-1.5">
           <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)' }}>
