@@ -3,10 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import './index.css'
 import App from './App.jsx'
+import PWAInstallPrompt from './components/PWAInstallPrompt.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
+    <PWAInstallPrompt />
     <Toaster
       theme="dark"
       position="bottom-right"

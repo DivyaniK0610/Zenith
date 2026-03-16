@@ -3,14 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BrainCircuit, Send, Sparkles, RefreshCw, ChevronRight,
   Zap, Flame, BarChart2, MessageSquare, X, Loader2,
-  TrendingUp, AlertTriangle, Target, ArrowRight,
+  TrendingUp, AlertTriangle, Target, ArrowRight, Trash2,
 } from 'lucide-react';
 import apiClient from '../api/client';
 import { useHabitStore } from '../store/habitStore';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
-// ── Markdown renderer (lightweight, no extra deps) ──────────────────────────
+const WELCOME_MESSAGE = {
+  role: 'assistant',
+  content: "I'm Zenith — your AI coach with full access to your habit data. I give **direct, data-driven advice**. No fluff.\n\n**Your move:** Ask me anything about your habits, streaks, or what to focus on next.",
+};
+
+// ── Markdown renderer ────────────────────────────────────────────────────────
 function MdText({ text }) {
   if (!text) return null;
   const lines = text.split('\n');
@@ -21,7 +26,6 @@ function MdText({ text }) {
     const line = lines[i];
     if (!line.trim()) { elements.push(<br key={key++} />); continue; }
 
-    // H2 heading
     if (line.startsWith('## ')) {
       elements.push(
         <div key={key++} style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: 'var(--color-primary)', marginTop: '14px', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -32,7 +36,6 @@ function MdText({ text }) {
       continue;
     }
 
-    // Render inline bold (**text**) and plain text
     const parts = line.split(/(\*\*[^*]+\*\*)/g);
     const rendered = parts.map((p, pi) => {
       if (p.startsWith('**') && p.endsWith('**')) {
@@ -51,7 +54,7 @@ function MdText({ text }) {
 }
 
 // ── Chat bubble ──────────────────────────────────────────────────────────────
-function Bubble({ msg, isLast }) {
+function Bubble({ msg }) {
   const isUser = msg.role === 'user';
   return (
     <motion.div
@@ -156,7 +159,6 @@ function AnalysisSection({ analysis, loading, onRefresh }) {
                 );
               })
             : (
-              // Fallback: render raw markdown analysis
               <div style={{ padding: '14px 16px', borderRadius: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
                 <MdText text={analysis.raw_response} />
               </div>
@@ -183,28 +185,68 @@ const QUICK_PROMPTS = [
 
 // ── Main AI Coach Page ───────────────────────────────────────────────────────
 export default function AICoach() {
-  const { userStats, habits } = useHabitStore();
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: "I'm Zenith — your AI coach with full access to your habit data. I give **direct, data-driven advice**. No fluff.\n\n**Your move:** Ask me anything about your habits, streaks, or what to focus on next.",
-    },
-  ]);
-  const [input, setInput]           = useState('');
-  const [isLoading, setIsLoading]   = useState(false);
-  const [analysis, setAnalysis]     = useState(null);
+  const { userStats } = useHabitStore();
+
+  const [messages, setMessages]               = useState([WELCOME_MESSAGE]);
+  const [input, setInput]                     = useState('');
+  const [isLoading, setIsLoading]             = useState(false);
+  const [historyLoading, setHistoryLoading]   = useState(true);
+  const [analysis, setAnalysis]               = useState(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedLoading, setEmbedLoading]       = useState(false);
   const [contextRefreshed, setContextRefreshed] = useState(false);
+  const [clearConfirm, setClearConfirm]       = useState(false);
 
-  const bottomRef   = useRef(null);
-  const inputRef    = useRef(null);
-  const chatAreaRef = useRef(null);
+  const bottomRef    = useRef(null);
+  const inputRef     = useRef(null);
+  const chatAreaRef  = useRef(null);
 
+  // ── Scroll to bottom on new messages ──────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // ── Load history + auto-sync + auto-analysis on mount ─────────────────────
+  useEffect(() => {
+    (async () => {
+      // Run all three in parallel — history, context sync, and analysis
+      const [historyResult] = await Promise.allSettled([
+        // 1. Load persisted chat history
+        apiClient.get(`/api/v1/chat/history/${USER_ID}`),
+
+        // 2. Silent context sync — keeps habit data fresh
+        apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }),
+
+        // 3. Auto-run habit analysis so the panel is populated on arrival
+        (async () => {
+          setAnalysisLoading(true);
+          try {
+            const res = await apiClient.get(`/api/v1/chat/analyze/${USER_ID}`);
+            setAnalysis(res.data?.data || null);
+          } catch (_) {
+            setAnalysis(null);
+          } finally {
+            setAnalysisLoading(false);
+          }
+        })(),
+      ]);
+
+      // Apply history result
+      if (historyResult.status === 'fulfilled') {
+        const rows = historyResult.value?.data?.data || [];
+        if (rows.length > 0) {
+          setMessages([
+            WELCOME_MESSAGE,
+            ...rows.map(r => ({ role: r.role, content: r.content, id: r.id })),
+          ]);
+        }
+      }
+
+      setHistoryLoading(false);
+    })();
+  }, []);
+
+  // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     const msg = (text || input).trim();
     if (!msg || isLoading) return;
@@ -212,6 +254,9 @@ export default function AICoach() {
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setIsLoading(true);
     try {
+      // Re-sync context silently before every message
+      await apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }).catch(() => {});
+      // The backend now persists both sides; we just display the reply
       const res = await apiClient.post('/api/v1/chat/message', { user_id: USER_ID, message: msg });
       const reply = res.data?.data?.reply || 'Something went wrong on my end.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -221,6 +266,26 @@ export default function AICoach() {
       setIsLoading(false);
     }
   }, [input, isLoading]);
+
+  // ── Manual re-sync ─────────────────────────────────────────────────────────
+  const refreshContext = useCallback(async () => {
+    setEmbedLoading(true);
+    try {
+      await apiClient.post('/api/v1/chat/embed', { user_id: USER_ID });
+      setContextRefreshed(true);
+      setTimeout(() => setContextRefreshed(false), 3000);
+    } catch (_) {}
+    finally { setEmbedLoading(false); }
+  }, []);
+
+  // ── Clear history ──────────────────────────────────────────────────────────
+  const clearHistory = useCallback(async () => {
+    try {
+      await apiClient.delete(`/api/v1/chat/history/${USER_ID}`);
+      setMessages([WELCOME_MESSAGE]);
+      setClearConfirm(false);
+    } catch (_) {}
+  }, []);
 
   const loadAnalysis = useCallback(async () => {
     setAnalysisLoading(true);
@@ -232,16 +297,6 @@ export default function AICoach() {
     } finally {
       setAnalysisLoading(false);
     }
-  }, []);
-
-  const refreshContext = useCallback(async () => {
-    setEmbedLoading(true);
-    try {
-      await apiClient.post('/api/v1/chat/embed', { user_id: USER_ID });
-      setContextRefreshed(true);
-      setTimeout(() => setContextRefreshed(false), 3000);
-    } catch (_) {}
-    finally { setEmbedLoading(false); }
   }, []);
 
   return (
@@ -258,17 +313,44 @@ export default function AICoach() {
             AI Coach
           </motion.h1>
           <p style={{ fontSize: '12px', color: 'var(--color-text-3)', marginTop: '3px' }}>
-            Powered by Groq · Uses your real habit data
+            Powered by Groq · conversation saved automatically
           </p>
         </div>
         <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginTop: '4px' }}>
-          {/* Refresh context */}
+          {/* Clear history */}
+          <AnimatePresence mode="wait">
+            {clearConfirm ? (
+              <motion.div key="confirm"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-3)', whiteSpace: 'nowrap' }}>Clear history?</span>
+                <button onClick={clearHistory}
+                  style={{ padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}>
+                  Yes
+                </button>
+                <button onClick={() => setClearConfirm(false)}
+                  style={{ padding: '6px 10px', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)' }}>
+                  No
+                </button>
+              </motion.div>
+            ) : (
+              <motion.button key="trash" whileTap={{ scale: 0.95 }} onClick={() => setClearConfirm(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: 'var(--color-stone)', color: 'var(--color-text-3)', border: '1px solid var(--color-border)', transition: 'all 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(248,113,113,0.3)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-3)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}>
+                <Trash2 size={11} />
+                Clear
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          {/* Re-sync */}
           <motion.button whileTap={{ scale: 0.95 }} onClick={refreshContext} disabled={embedLoading}
             style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, cursor: embedLoading ? 'default' : 'pointer', background: contextRefreshed ? 'rgba(82,168,115,0.12)' : 'var(--color-stone)', color: contextRefreshed ? '#6fcf8a' : 'var(--color-text-3)', border: `1px solid ${contextRefreshed ? 'rgba(82,168,115,0.3)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
             <motion.div animate={{ rotate: embedLoading ? 360 : 0 }} transition={{ duration: 1, repeat: embedLoading ? Infinity : 0, ease: 'linear' }}>
               <RefreshCw size={11} />
             </motion.div>
-            {contextRefreshed ? 'Updated!' : 'Sync data'}
+            {contextRefreshed ? 'Updated!' : 'Re-sync'}
           </motion.button>
         </div>
       </div>
@@ -284,9 +366,9 @@ export default function AICoach() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
               style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
               {[
-                { icon: Zap, val: `Lv ${userStats.level}`, color: '#b87333' },
-                { icon: Flame, val: `${userStats.current_streak}d streak`, color: '#e07830' },
-                { icon: BarChart2, val: `${userStats.xp} XP`, color: 'var(--color-primary)' },
+                { icon: Zap,      val: `Lv ${userStats.level}`,            color: '#b87333' },
+                { icon: Flame,    val: `${userStats.current_streak}d streak`, color: '#e07830' },
+                { icon: BarChart2, val: `${userStats.xp} XP`,              color: 'var(--color-primary)' },
               ].map(({ icon: Icon, val, color }) => (
                 <div key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '8px', background: 'var(--color-stone)', border: '1px solid var(--color-border)' }}>
                   <Icon size={10} style={{ color }} />
@@ -299,9 +381,22 @@ export default function AICoach() {
           {/* Messages area */}
           <div ref={chatAreaRef}
             style={{ flex: 1, overflowY: 'auto', padding: '4px 2px 8px', minHeight: 0 }}>
-            {messages.map((msg, i) => (
-              <Bubble key={i} msg={msg} isLast={i === messages.length - 1} />
-            ))}
+
+            {/* History loading skeleton */}
+            {historyLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '8px 0' }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ display: 'flex', justifyContent: i % 2 === 0 ? 'flex-end' : 'flex-start', gap: '8px' }}>
+                    {i % 2 !== 0 && <div style={{ width: '28px', height: '28px', borderRadius: '9px', background: 'var(--color-stone)', flexShrink: 0 }} />}
+                    <div style={{ height: '52px', width: `${40 + i * 15}%`, borderRadius: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <Bubble key={msg.id || i} msg={msg} />
+              ))
+            )}
 
             {/* Typing indicator */}
             <AnimatePresence>
@@ -345,14 +440,15 @@ export default function AICoach() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                 placeholder="Ask me anything about your habits…"
-                style={{ width: '100%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '12px 46px 12px 16px', color: 'var(--color-text-1)', fontSize: '13px', fontFamily: 'var(--font-sans)', outline: 'none', transition: 'border-color 0.15s', boxSizing: 'border-box' }}
+                disabled={historyLoading}
+                style={{ width: '100%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '12px 46px 12px 16px', color: 'var(--color-text-1)', fontSize: '13px', fontFamily: 'var(--font-sans)', outline: 'none', transition: 'border-color 0.15s', boxSizing: 'border-box', opacity: historyLoading ? 0.5 : 1 }}
                 onFocus={e => e.target.style.borderColor = 'var(--color-primary-border)'}
                 onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
               />
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => sendMessage()}
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || historyLoading}
                 style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', width: '30px', height: '30px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: input.trim() ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))' : 'var(--color-stone)', border: input.trim() ? '1px solid rgba(184,115,51,0.3)' : '1px solid var(--color-border)', cursor: input.trim() ? 'pointer' : 'default', color: input.trim() ? '#fff' : 'var(--color-text-3)', transition: 'all 0.15s' }}
               >
                 {isLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={12} />}
@@ -365,7 +461,6 @@ export default function AICoach() {
         <div className="hidden md:block" style={{ width: '280px', flexShrink: 0, overflowY: 'auto' }}>
           <AnalysisSection analysis={analysis} loading={analysisLoading} onRefresh={loadAnalysis} />
 
-          {/* Coach mode info */}
           <div style={{ borderRadius: '14px', padding: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', left: 0, top: '8px', bottom: '8px', width: '3px', borderRadius: '0 3px 3px 0', background: 'linear-gradient(to bottom, var(--color-primary), var(--color-primary-dim))' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>

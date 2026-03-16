@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 36" fill="none">
+  <defs>
+    <linearGradient id="bgIcon" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a1610"/>
+      <stop offset="100%" stop-color="#0c0a08"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d4954a"/>
+      <stop offset="100%" stop-color="#8a5520"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon mark: rounded rect -->
+  <rect width="32" height="32" rx="9" fill="url(#bgIcon)" x="0" y="2"/>
+  <rect x="0" y="2" width="32" height="1" rx="0.5" fill="#d4954a" opacity="0.4"/>
+
+  <!-- S letterform inside icon -->
+  <path
+    d="M21.5 9.5C21.5 9.5 19.5 8 17 8C14 8 11.5 9.8 11.5 12.5C11.5 15.2 13.5 16.3 16 17L18.5 17.8C21 18.5 23 19.8 23 23C23 26.2 20.5 28 17 28C14.2 28 12 26.5 12 26.5"
+    stroke="url(#amber)"
+    stroke-width="2.4"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <circle cx="26.5" cy="26.5" r="2" fill="#b07030" opacity="0.55"/>
+
+  <!-- Wordmark: "slate" -->
+  <!-- s -->
+  <path d="M41 22.5C41 22.5 39.8 23.4 38.2 23.4C36.8 23.4 36 22.8 36 21.8C36 20.8 36.8 20.3 38.2 20L39.5 19.7C40.8 19.4 41.5 18.7 41.5 17.5C41.5 16.1 40.3 15.2 38.5 15.2C36.9 15.2 36 15.9 36 15.9" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+
+  <!-- l -->
+  <line x1="44" y1="12" x2="44" y2="23.2" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- a -->
+  <path d="M48 19C48 19 48.5 15.2 51.5 15.2C54.5 15.2 55 17.5 55 19V23.2" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  <path d="M48 20.5C48 20.5 48.5 23.4 51.5 23.4C54 23.4 55 21.8 55 20.5" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+
+  <!-- t -->
+  <line x1="59" y1="12.5" x2="59" y2="23.2" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="56.5" y1="15.4" x2="61.5" y2="15.4" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- e -->
+  <path d="M64.5 19.2C64.5 19.2 64.8 15.2 68 15.2C71 15.2 71.5 18.5 71.5 19.2H64.5Z" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M64.5 19.2C64.5 19.2 64.5 23.4 68 23.4C70 23.4 71.5 22 71.5 22" stroke="#e8dece" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+
+  <!-- amber accent dot after wordmark -->
+  <circle cx="76" cy="23" r="2" fill="#b07030" opacity="0.7"/>
+</svg>
