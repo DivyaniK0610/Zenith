@@ -1,16 +1,17 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Target } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
 import ThemeToggle from '../ThemeToggle';
+import { useZenithSounds } from '../../hooks/useSound';
 
 const navItems = [
-  { name: 'Dashboard', path: '/',          icon: LayoutDashboard },
-  { name: 'Analytics', path: '/analytics', icon: BarChart2 },
-  { name: 'Goals',     path: '/goals',     icon: Target },
-  { name: 'AI Coach',  path: '/coach',     icon: BrainCircuit },
-  { name: 'Timer',     path: '/timer',     icon: Timer },
+  { name: 'Dashboard', path: '/',          icon: LayoutDashboard, shortcut: 'D' },
+  { name: 'Analytics', path: '/analytics', icon: BarChart2,       shortcut: 'A' },
+  { name: 'Goals',     path: '/goals',     icon: Target,          shortcut: 'G' },
+  { name: 'AI Coach',  path: '/coach',     icon: BrainCircuit,    shortcut: 'C' },
+  { name: 'Timer',     path: '/timer',     icon: Timer,           shortcut: 'T' },
 ];
 
 /**
@@ -49,10 +50,27 @@ function SlateMark({ size = 30 }) {
 
 export default function Sidebar() {
   const { userStats } = useHabitStore();
+  const { playNavClick } = useZenithSounds();
+  const navigate = useNavigate();
   const level     = userStats?.level || 1;
   const xp        = userStats?.xp    || 0;
   const xpInLevel = xp % 100;
   const progress  = xpInLevel;
+
+  // Keyboard shortcuts: 1–5 to navigate pages (only when not typing in an input)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+      const item = navItems.find(n => n.shortcut === e.key.toUpperCase());
+      if (item) {
+        playNavClick();
+        navigate(item.path);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [navigate, playNavClick]);
 
   return (
     <div
@@ -75,7 +93,8 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex flex-col gap-0.5 px-3 flex-1">
         {navItems.map(item => (
-          <NavLink key={item.name} to={item.path} end={item.path === '/'} className="block">
+          <NavLink key={item.name} to={item.path} end={item.path === '/'} className="block"
+            onClick={playNavClick}>
             {({ isActive }) => (
               <div className="relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all"
                 style={{ background: isActive ? 'rgba(184,115,51,0.1)' : 'transparent', color: isActive ? 'var(--color-warm-white)' : 'var(--color-text-3)' }}>
@@ -89,15 +108,19 @@ export default function Sidebar() {
                 )}
                 <item.icon size={15} className="relative flex-shrink-0"
                   style={{ color: isActive ? 'var(--color-primary)' : 'inherit' }} />
-                <span className="relative text-sm" style={{ fontWeight: isActive ? 500 : 400, letterSpacing: '-0.01em' }}>
+                <span className="relative text-sm" style={{ fontWeight: isActive ? 500 : 400, letterSpacing: '-0.01em', flex: 1 }}>
                   {item.name}
                 </span>
-                {isActive && (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: [1, 1.5, 1] }}
-                    transition={{ duration: 0.5, times: [0, 0.5, 1] }}
-                    className="absolute right-3 w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--color-primary)', opacity: 0.7, boxShadow: '0 0 6px var(--color-primary)' }} />
-                )}
+                {/* Keyboard shortcut badge */}
+                <span style={{
+                  fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600,
+                  color: isActive ? 'var(--color-primary)' : 'var(--color-text-3)',
+                  background: isActive ? 'rgba(184,115,51,0.12)' : 'var(--color-stone-mid)',
+                  border: `1px solid ${isActive ? 'rgba(184,115,51,0.25)' : 'var(--color-stone-light)'}`,
+                  borderRadius: '5px', padding: '1px 5px', opacity: 0.8, flexShrink: 0,
+                }}>
+                  {item.shortcut}
+                </span>
               </div>
             )}
           </NavLink>

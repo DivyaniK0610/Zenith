@@ -359,7 +359,7 @@ function CompletionBanner({ mode, onStart, onDismiss }) {
 }
 
 // ── Fullscreen — theme-aware ──────────────────────────────────────────────────
-function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, onReset, onSkip, onClose, isLight }) {
+function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, onReset, onSkip, onClose, onAdjust, isLight }) {
   const size = Math.min(window.innerWidth*0.72, 340);
   const STROKE = 9;
 
@@ -413,6 +413,38 @@ function Fullscreen({ mode, timeLeft, progress, running, color, glow, onToggle, 
           </motion.button>
         ))}
       </div>
+      {/* ── Time adjustment buttons ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+        <span style={{
+          fontSize:'9px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em',
+          color: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)',
+          marginRight:'2px',
+        }}>Adjust</span>
+        {[
+          { label:'-10m', delta:-600 },
+          { label:'-5m',  delta:-300 },
+          { label:'+5m',  delta:+300 },
+          { label:'+10m', delta:+600 },
+        ].map(({ label, delta }) => {
+          const isAdd = delta > 0;
+          return (
+            <motion.button key={label} whileTap={{ scale:0.85 }}
+              onClick={() => onAdjust(delta)}
+              style={{
+                padding:'6px 13px', borderRadius:'10px', fontSize:'12px', fontWeight:700,
+                cursor:'pointer', transition:'all 0.15s',
+                background: isAdd
+                  ? 'rgba(82,168,115,0.15)'
+                  : 'rgba(248,113,113,0.12)',
+                color: isAdd ? '#6fcf8a' : '#f87171',
+                border: `1px solid ${isAdd ? 'rgba(82,168,115,0.3)' : 'rgba(248,113,113,0.25)'}`,
+              }}>
+              {label}
+            </motion.button>
+          );
+        })}
+      </div>
+
       <button onClick={onClose}
         style={{ position:'fixed',top:'20px',right:'20px',width:'40px',height:'40px',borderRadius:'12px',display:'flex',alignItems:'center',justifyContent:'center',
           background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
@@ -529,7 +561,7 @@ function Guide() {
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function Timer() {
   const { habits, loadHabits } = useHabitStore();
-  const { playSuccess } = useZenithSounds();
+  const { playTimerEnd } = useZenithSounds();
 
   const [durations, setDurations]       = useState(loadDurations);
   const persisted = loadState();
@@ -629,7 +661,7 @@ export default function Timer() {
     setTimeout(() => { completionGuard.current = false; }, 2000);
 
     const dur = durations[completedMode];
-    if (!muted) playSuccess();
+    if (!muted) playTimerEnd();
     if (Notification.permission === 'granted') {
       new Notification('Slate', {
         body: completedMode==='focus' ? `${dur}m focus complete!` : 'Break over.',
@@ -659,7 +691,7 @@ export default function Timer() {
       }
     }
     setCompletion({ mode: completedMode, nextMode: getNextMode(completedMode) });
-  }, [durations, muted, playSuccess, habits, selectedHabit, note, getNextMode]);
+  }, [durations, muted, playTimerEnd, habits, selectedHabit, note, getNextMode]);
 
   useEffect(() => {
     if (!running) return;
@@ -688,6 +720,12 @@ export default function Timer() {
   };
   const reset = () => { clearInterval(timerRef.current); setRunning(false); setTimeLeft(durations[mode]*60); setCompletion(null); };
   const skip  = () => { const next=getNextMode(mode); switchMode(next); };
+  const adjustTime = useCallback((deltaSecs) => {
+    setTimeLeft(t => {
+      const maxTime = durations[mode] * 60 * 2; // cap at 2× the set duration
+      return Math.max(5, Math.min(maxTime, t + deltaSecs));
+    });
+  }, [durations, mode]);
 
   const STROKE = 8;
 
@@ -709,6 +747,7 @@ export default function Timer() {
             running={running} color={m.color} glow={m.glow}
             onToggle={toggle} onReset={reset} onSkip={skip}
             onClose={() => setShowFull(false)}
+            onAdjust={adjustTime}
             isLight={isLight}/>
         )}
       </AnimatePresence>
@@ -883,6 +922,34 @@ export default function Timer() {
                   </AnimatePresence>
                 </motion.button>
               ))}
+            </div>
+
+            {/* Time adjustment buttons — normal screen */}
+            <div style={{ display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap',justifyContent:'center' }}>
+              <span style={{ fontSize:'9px',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--color-text-3)',marginRight:'2px' }}>Adjust</span>
+              {[
+                { label:'-10m', delta:-600 },
+                { label:'-5m',  delta:-300 },
+                { label:'+5m',  delta:+300 },
+                { label:'+10m', delta:+600 },
+              ].map(({ label, delta }) => {
+                const isAdd = delta > 0;
+                return (
+                  <motion.button key={label} whileTap={{ scale:0.88 }}
+                    onClick={() => adjustTime(delta)}
+                    style={{
+                      padding:'5px 11px', borderRadius:'9px', fontSize:'11px', fontWeight:700,
+                      cursor:'pointer', transition:'all 0.15s',
+                      background: isAdd ? 'rgba(82,168,115,0.12)' : 'rgba(248,113,113,0.10)',
+                      color: isAdd ? '#6fcf8a' : '#f87171',
+                      border: `1px solid ${isAdd ? 'rgba(82,168,115,0.28)' : 'rgba(248,113,113,0.22)'}`,
+                    }}
+                    onMouseEnter={e=>{ e.currentTarget.style.background = isAdd ? 'rgba(82,168,115,0.2)' : 'rgba(248,113,113,0.18)'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.background = isAdd ? 'rgba(82,168,115,0.12)' : 'rgba(248,113,113,0.10)'; }}>
+                    {label}
+                  </motion.button>
+                );
+              })}
             </div>
 
             {/* Dots */}

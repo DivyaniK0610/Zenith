@@ -71,7 +71,11 @@ export function useZenithSounds() {
 
   // Habit completion — celebration sound
   const playSuccess = useCallback(() => {
-    playSound('/src/assets/sounds/tap_05.wav', 0.65);
+    playSound('/sounds/tap_05.wav', 0.65);
+  }, []);
+
+  const playTimerEnd = useCallback(() => {
+    playSound('/sounds/celebration.wav', 0.5);
   }, []);
 
   // Level up — keep the dramatic synth fanfare
@@ -86,45 +90,49 @@ export function useZenithSounds() {
 
   // Delete habit
   const playDelete = useCallback(() => {
-    playSound('/src/assets/sounds/disabled.wav', 0.4);
+    playSound('/sounds/disabled.wav', 0.4);
   }, []);
 
   // Archive habit
   const playArchive = useCallback(() => {
-    playSound('/src/assets/sounds/swipe_01.wav', 0.4);
+    playSound('/sounds/swipe_01.wav', 0.4);
   }, []);
 
   // Pause habit
   const playPause = useCallback(() => {
-    playSound('/src/assets/sounds/toggle_off.wav', 0.4);
+    playSound('/sounds/toggle_off.wav', 0.4);
   }, []);
 
   // Resume habit
   const playResume = useCallback(() => {
-    playSound('/src/assets/sounds/toggle_on.wav', 0.4);
+    playSound('/sounds/toggle_on.wav', 0.4);
   }, []);
 
   const playToggleOn = useCallback(() => {
-    playSound('/src/assets/sounds/toggle_on.wav', 0.3);
+    playSound('/sounds/toggle_on.wav', 0.3);
   }, []);
 
   const playToggleOff = useCallback(() => {
-    playSound('/src/assets/sounds/toggle_off.wav', 0.3);
+    playSound('/sounds/toggle_off.wav', 0.3);
   }, []);
 
   // Open menu
   const playMenuOpen = useCallback(() => {
-    playSound('/src/assets/sounds/tap_01.wav', 0.25);
+    playSound('/sounds/tap_01.wav', 0.25);
   }, []);
 
   // Modal open
   const playModalOpen = useCallback(() => {
-    playSound('/src/assets/sounds/tap_05.wav', 0.3);
+    playSound('/sounds/tap_05.wav', 0.3);
   }, []);
 
   // Modal close
   const playModalClose = useCallback(() => {
-    playSound('/src/assets/sounds/tap_01.wav', 0.3);
+    playSound('/sounds/tap_01.wav', 0.3);
+  }, []);
+
+  const playNavClick = useCallback(() => {
+    playSound('/sounds/tap_01.wav', 0.18);
   }, []);
 
   return {
@@ -140,5 +148,7 @@ export function useZenithSounds() {
     playModalClose,
     playToggleOn,
     playToggleOff,
+    playTimerEnd,
+    playNavClick,
   };
 }
