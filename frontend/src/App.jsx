@@ -11,6 +11,7 @@ import Achievements from './pages/Achievements';
 import { ACHIEVEMENT_DEFS } from './pages/Achievements';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHabitStore } from './store/habitStore';
+import { useZenithSounds } from './hooks/useSound';
 import { Settings, X, Zap, Sparkles, ChevronDown, Trophy, ChevronRight, Share2 } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
 import ThemeColorSync from './components/ThemeColorSync';
@@ -157,7 +158,6 @@ function SettingsPopover({ onClose, anchorRef }) {
   const xp         = userStats?.xp || 0;
   const xpInLevel  = xp % 100;
 
-  // Compute earned count for the badge
   const { habits } = useHabitStore();
   const earnedCount = ACHIEVEMENT_DEFS.filter(def => def.check(userStats, habits)).length;
 
@@ -259,7 +259,6 @@ function SettingsPopover({ onClose, anchorRef }) {
         onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,115,51,0.06)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        {/* Trophy icon */}
         <div style={{
           width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -273,7 +272,6 @@ function SettingsPopover({ onClose, anchorRef }) {
             {earnedCount} of {ACHIEVEMENT_DEFS.length} unlocked
           </div>
         </div>
-        {/* Mini progress bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           <div style={{ width: '36px', height: '3px', background: 'var(--color-stone)', borderRadius: '99px', overflow: 'hidden' }}>
             <div style={{ height: '100%', borderRadius: '99px', background: '#c9a43a', width: `${Math.round((earnedCount / ACHIEVEMENT_DEFS.length) * 100)}%` }} />
@@ -425,19 +423,16 @@ function AppInner() {
   const isMobile = useIsMobile();
   const { userStats } = useHabitStore();
 
-  // Global achievement overlay state — fed by demoTriggerCallbacks
-  const [activeOverlay, setActiveOverlay]   = useState(null); // { type: 'legacy'|'achievement', ... }
-  const [shareTarget, setShareTarget]       = useState(null);  // achievement def to share
+  const [activeOverlay, setActiveOverlay]   = useState(null);
+  const [shareTarget, setShareTarget]       = useState(null);
 
   // Wire up demo trigger
   useEffect(() => {
     demoTriggerCallbacks.current = (data) => {
       if (data.type === 'achievement') {
-        // Look up the achievement def and show the new-style overlay
         const def = ACHIEVEMENT_DEFS.find(d => d.id === data.achievementId);
         if (def) setActiveOverlay({ type: 'achievement', def });
       } else {
-        // Legacy level-up / streak overlays
         setActiveOverlay({ type: 'legacy', data });
       }
     };
@@ -479,7 +474,7 @@ function AppInner() {
 
       <MobileNav />
 
-      {/* ── Legacy overlays (level-up / streak) with added Share button ── */}
+      {/* ── Legacy overlays (level-up / streak) ── */}
       <AnimatePresence>
         {activeOverlay?.type === 'legacy' && (
           <LegacyOverlayWithShare
@@ -503,7 +498,7 @@ function AppInner() {
         )}
       </AnimatePresence>
 
-      {/* ── Share modal (shared by both overlay types) ── */}
+      {/* ── Share modal ── */}
       <AnimatePresence>
         {shareTarget && (
           <ShareModalPortal
@@ -517,24 +512,19 @@ function AppInner() {
   );
 }
 
-// ── Inline ShareModal (mirrors the one in Achievements.jsx but usable globally) ─
+// ── ShareModalPortal ──────────────────────────────────────────────────────────
 import { createPortal } from 'react-dom';
 
 function ShareModalPortal({ achievement, userStats, onClose }) {
-  // Dynamically import the ShareModal logic here inline
   const [imageUrl, setImageUrl] = useState(null);
   const [generating, setGenerating] = useState(true);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  // Re-use the canvas generator from Achievements
   useEffect(() => {
-    import('./pages/Achievements').then(({ default: _ }) => {
-      // generateShareCard is not exported, so we rebuild it inline here
-      generateShareCardInline(achievement, userStats).then(url => {
-        setImageUrl(url);
-        setGenerating(false);
-      });
+    generateShareCardInline(achievement, userStats).then(url => {
+      setImageUrl(url);
+      setGenerating(false);
     });
   }, [achievement, userStats]);
 
@@ -573,8 +563,6 @@ function ShareModalPortal({ achievement, userStats, onClose }) {
       setTimeout(() => setCopied(false), 2500);
     });
   };
-
-  const { Instagram, Download, Copy, Check: CheckIcon } = { Instagram: () => null, Download: () => null, Copy: () => null, Check: () => null };
 
   return createPortal(
     <>
@@ -657,7 +645,7 @@ function ShareModalPortal({ achievement, userStats, onClose }) {
   );
 }
 
-// Canvas card generator (mirrors Achievements.jsx — kept in sync)
+// ── Canvas card generator ─────────────────────────────────────────────────────
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -679,7 +667,6 @@ function generateShareCardInline(achievement, userStats) {
     canvas.height = 1080;
     const ctx = canvas.getContext('2d');
 
-    // BG
     const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
     bgGrad.addColorStop(0, '#0c0a08');
     bgGrad.addColorStop(0.5, '#1a1510');
@@ -687,7 +674,6 @@ function generateShareCardInline(achievement, userStats) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, 1080, 1080);
 
-    // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 1080; i += 60) {
@@ -695,14 +681,12 @@ function generateShareCardInline(achievement, userStats) {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
     }
 
-    // Glow
     const glowGrad = ctx.createRadialGradient(540, 480, 0, 540, 480, 500);
     glowGrad.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.18)').replace('0.4', '0.18'));
     glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, 1080, 1080);
 
-    // Top accent line
     const topLine = ctx.createLinearGradient(0, 0, 1080, 0);
     topLine.addColorStop(0, 'rgba(0,0,0,0)');
     topLine.addColorStop(0.5, achievement.color || '#b07030');
@@ -710,7 +694,6 @@ function generateShareCardInline(achievement, userStats) {
     ctx.fillStyle = topLine;
     ctx.fillRect(0, 0, 1080, 3);
 
-    // Badge
     const cx = 540, cy = 420, r = 155;
     const ringGlow = ctx.createRadialGradient(cx, cy, r - 10, cx, cy, r + 40);
     ringGlow.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.4)').replace('0.4', '0.45'));
@@ -718,8 +701,8 @@ function generateShareCardInline(achievement, userStats) {
     ctx.fillStyle = ringGlow;
     ctx.beginPath(); ctx.arc(cx, cy, r + 40, 0, Math.PI * 2); ctx.fill();
 
-    const badgeBg = ctx.createRadialGradient(cx - 30, cy - 30, 0, cx, cy, r);
     const bg = achievement.bg || 'rgba(184,115,51,0.12)';
+    const badgeBg = ctx.createRadialGradient(cx - 30, cy - 30, 0, cx, cy, r);
     badgeBg.addColorStop(0, bg.replace('0.12', '0.5'));
     badgeBg.addColorStop(1, bg.replace('0.12', '0.15'));
     ctx.fillStyle = badgeBg;
@@ -729,26 +712,22 @@ function generateShareCardInline(achievement, userStats) {
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
 
-    // Emoji
     const emojiMap = { Streaks: '🔥', Levels: '⚡', Habits: '✅', XP: '🏆', Special: '✨' };
     ctx.font = '110px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emojiMap[achievement.category] || '🏆', cx, cy);
 
-    // Title
     ctx.textBaseline = 'alphabetic';
     ctx.font = 'bold 68px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f0e8d8';
     ctx.fillText(achievement.title || 'Achievement', 540, 650);
 
-    // Description
     ctx.font = '34px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = achievement.color || '#b07030';
     ctx.fillText(achievement.description || '', 540, 710);
 
-    // Stats
     const stats = [`Level ${userStats?.level || 1}`, `${userStats?.xp || 0} XP`, `${userStats?.longest_streak || 0}d streak`];
     const statY = 810;
     stats.forEach((stat, i) => {
@@ -766,11 +745,9 @@ function generateShareCardInline(achievement, userStats) {
       ctx.fillText(stat, x, statY + 9);
     });
 
-    // Divider
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(100, 900, 880, 1);
 
-    // Slate logo slabs
     const slabX = 432, slabY = 936;
     [
       { x: slabX, y: slabY,      w: 62, h: 14, r: 4, c0: '#d4954a', c1: '#a06828' },
@@ -784,13 +761,11 @@ function generateShareCardInline(achievement, userStats) {
       ctx.fill();
     });
 
-    // Wordmark
     ctx.font = 'bold 34px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = '#e8dece';
     ctx.textAlign = 'left';
     ctx.fillText('Slate', slabX + 74, slabY + 35);
 
-    // URL
     ctx.font = '22px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.32)';
     ctx.textAlign = 'center';
@@ -800,8 +775,7 @@ function generateShareCardInline(achievement, userStats) {
   });
 }
 
-// ── Legacy overlay with Share button wired in ─────────────────────────────────
-// Maps a legacy level_up/streak event to the closest matching achievement def
+// ── getLegacyAchievementDef ───────────────────────────────────────────────────
 function getLegacyAchievementDef(data) {
   if (data.type === 'level_up') {
     const level = data.level || 5;
@@ -819,16 +793,34 @@ function getLegacyAchievementDef(data) {
   return ACHIEVEMENT_DEFS.find(d => d.id === 'early_bird');
 }
 
+// ── LegacyOverlayWithShare — with SOUNDS ─────────────────────────────────────
 function LegacyOverlayWithShare({ data, userStats, onClose, onShare }) {
-  // Auto-dismiss after 6s
-  useEffect(() => {
-    const t = setTimeout(onClose, 6000);
-    return () => clearTimeout(t);
-  }, [onClose]);
+  // ── SOUNDS ──────────────────────────────────────────────────────────────────
+  const { playLevelUp, playStreak } = useZenithSounds();
 
-  const isLevelUp = data.type === 'level_up';
-  const color     = isLevelUp ? '#c9813a' : '#e07a30';
-  const glow      = isLevelUp ? 'rgba(201,129,58,0.35)' : 'rgba(224,122,48,0.3)';
+  useEffect(() => {
+    // Fire the right sound 120 ms after mount so the overlay is visible first
+    const soundTimer = setTimeout(() => {
+      if (data.type === 'level_up') {
+        playLevelUp();
+      } else if (data.type === 'streak') {
+        playStreak();
+      }
+    }, 120);
+
+    // Auto-dismiss after 6 s
+    const dismissTimer = setTimeout(onClose, 6000);
+
+    return () => {
+      clearTimeout(soundTimer);
+      clearTimeout(dismissTimer);
+    };
+  }, [onClose]);
+  // ────────────────────────────────────────────────────────────────────────────
+
+  const isLevelUp  = data.type === 'level_up';
+  const color      = isLevelUp ? '#c9813a' : '#e07a30';
+  const glow       = isLevelUp ? 'rgba(201,129,58,0.35)' : 'rgba(224,122,48,0.3)';
   const matchedDef = getLegacyAchievementDef(data);
 
   function Particle({ delay }) {
@@ -908,7 +900,6 @@ function LegacyOverlayWithShare({ data, userStats, onClose, onShare }) {
               {/* Action buttons */}
               <motion.div style={{ display: 'flex', gap: '8px', width: '100%' }}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-                {/* Share button — only if we have a matching def */}
                 {matchedDef && (
                   <motion.button
                     whileTap={{ scale: 0.96 }}
@@ -955,6 +946,7 @@ function LegacyOverlayWithShare({ data, userStats, onClose, onShare }) {
   );
 }
 
+// ── App root ──────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <Router>
