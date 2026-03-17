@@ -11,40 +11,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useHabitStore } from './store/habitStore';
 import { Settings, X, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
+import ThemeColorSync from './components/ThemeColorSync';
 
-// ── Theme detection hook ──────────────────────────────────────────────────────
-// Watches the data-theme attribute on <html> so buttons adapt instantly.
-function useIsLight() {
-  const [isLight, setIsLight] = useState(
-    () => document.documentElement.getAttribute('data-theme') === 'light'
-  );
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsLight(document.documentElement.getAttribute('data-theme') === 'light');
-    });
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-    return () => observer.disconnect();
-  }, []);
-  return isLight;
-}
-
-// ── Shared demo trigger callback ──────────────────────────────────────────────
-export const demoTriggerCallbacks = { current: null };
-
-// ── Test achievement panel ────────────────────────────────────────────────────
+// ── Test achievement panel (imported here for mobile top bar) ─────────────────
 const TEST_ACHIEVEMENTS = [
-  { label: 'Level Up overlay',     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
-  { label: '7-day streak reward',  data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
-  { label: '30-day streak reward', data: { type: 'streak', current_streak: 30, xp_gained: 210, milestone_bonus: 200, message: 'On fire. 30 days straight.' } },
+  { label: '⚡ Level Up overlay',     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
+  { label: '🔥 7-day streak reward',  data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
+  { label: '🔥 30-day streak reward', data: { type: 'streak', current_streak: 30, xp_gained: 210, milestone_bonus: 200, message: 'On fire. 30 days straight.' } },
 ];
 
 function TestPanel({ onTrigger }) {
   const [open, setOpen] = useState(false);
-  const ref             = useRef(null);
-  const isLight         = useIsLight();
+  const ref = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -52,14 +30,6 @@ function TestPanel({ onTrigger }) {
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
-
-  const idleBg     = isLight ? 'var(--color-surface-2)'  : 'rgba(0,0,0,0.45)';
-  const idleBorder = isLight ? 'var(--color-border)'      : 'rgba(255,255,255,0.10)';
-  const idleColor  = isLight ? 'var(--color-text-2)'      : 'var(--color-text-3)';
-  const activeBg   = isLight ? 'rgba(140,92,26,0.10)'     : 'rgba(184,115,51,0.15)';
-  const shadow     = isLight
-    ? '0 1px 4px rgba(60,50,36,0.12), 0 0 0 0.5px rgba(60,50,36,0.06)'
-    : '0 2px 8px rgba(0,0,0,0.25)';
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -69,12 +39,12 @@ function TestPanel({ onTrigger }) {
         style={{
           display: 'flex', alignItems: 'center', gap: '5px',
           padding: '0 10px', height: '34px', borderRadius: '10px',
-          background: open ? activeBg : idleBg,
-          color: open ? 'var(--color-primary)' : idleColor,
-          border: `1px solid ${open ? 'var(--color-primary-border)' : idleBorder}`,
+          background: open ? 'rgba(184,115,51,0.15)' : 'rgba(0,0,0,0.35)',
+          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
+          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
           cursor: 'pointer', fontSize: '12px', fontWeight: 600,
-          fontFamily: 'var(--font-sans)',
-          boxShadow: shadow,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           transition: 'all 0.15s',
         }}
       >
@@ -101,9 +71,7 @@ function TestPanel({ onTrigger }) {
               borderRadius: '12px',
               background: 'var(--color-surface-2)',
               border: '1px solid var(--color-primary-border)',
-              boxShadow: isLight
-                ? '0 8px 32px rgba(60,50,36,0.18), 0 1px 0 rgba(255,255,255,0.8) inset'
-                : '0 8px 32px rgba(0,0,0,0.5)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
               overflow: 'hidden',
             }}
           >
@@ -134,10 +102,8 @@ function TestPanel({ onTrigger }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,115,51,0.07)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <span style={{ fontSize: '13px' }}>
-                  {label.includes('Level') ? '⚡' : '🔥'}
-                </span>
-                <span>{label}</span>
+                <span style={{ fontSize: '13px' }}>{label.split(' ')[0]}</span>
+                <span>{label.split(' ').slice(1).join(' ')}</span>
               </motion.button>
             ))}
           </motion.div>
@@ -150,11 +116,10 @@ function TestPanel({ onTrigger }) {
 // ── Settings popover ──────────────────────────────────────────────────────────
 function SettingsPopover({ onClose, anchorRef }) {
   const { userStats } = useHabitStore();
-  const popoverRef    = useRef(null);
-  const isLight       = useIsLight();
-  const level         = userStats?.level || 1;
-  const xp            = userStats?.xp || 0;
-  const xpInLevel     = xp % 100;
+  const popoverRef = useRef(null);
+  const level     = userStats?.level || 1;
+  const xp        = userStats?.xp || 0;
+  const xpInLevel = xp % 100;
 
   useEffect(() => {
     const handler = (e) => {
@@ -183,9 +148,7 @@ function SettingsPopover({ onClose, anchorRef }) {
         borderRadius: '16px',
         background: 'var(--color-surface-2)',
         border: '1px solid var(--color-border)',
-        boxShadow: isLight
-          ? '0 16px 48px rgba(60,50,36,0.18), 0 1px 0 rgba(255,255,255,0.9) inset'
-          : '0 16px 48px rgba(0,0,0,0.6)',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
         overflow: 'hidden',
       }}
     >
@@ -253,16 +216,7 @@ function SettingsPopover({ onClose, anchorRef }) {
 // ── Settings button ───────────────────────────────────────────────────────────
 function SettingsButton() {
   const [open, setOpen] = useState(false);
-  const btnRef          = useRef(null);
-  const isLight         = useIsLight();
-
-  const idleBg     = isLight ? 'var(--color-surface-2)' : 'rgba(0,0,0,0.45)';
-  const idleBorder = isLight ? 'var(--color-border)'    : 'rgba(255,255,255,0.10)';
-  const idleColor  = isLight ? 'var(--color-text-2)'    : 'var(--color-text-3)';
-  const activeBg   = isLight ? 'rgba(140,92,26,0.10)'   : 'rgba(184,115,51,0.12)';
-  const shadow     = isLight
-    ? '0 1px 4px rgba(60,50,36,0.12), 0 0 0 0.5px rgba(60,50,36,0.06)'
-    : '0 2px 8px rgba(0,0,0,0.25)';
+  const btnRef = useRef(null);
 
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -273,11 +227,12 @@ function SettingsButton() {
         style={{
           width: '34px', height: '34px', borderRadius: '10px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: open ? activeBg : idleBg,
-          border: `1px solid ${open ? 'var(--color-primary-border)' : idleBorder}`,
-          color: open ? 'var(--color-primary)' : idleColor,
+          background: open ? 'rgba(184,115,51,0.12)' : 'rgba(0,0,0,0.35)',
+          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
+          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
           cursor: 'pointer', transition: 'all 0.15s',
-          boxShadow: shadow,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
         <AnimatePresence mode="wait">
@@ -309,16 +264,21 @@ function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
-    const h  = (e) => setIsMobile(e.matches);
+    const h = (e) => setIsMobile(e.matches);
     mq.addEventListener('change', h);
     return () => mq.removeEventListener('change', h);
   }, []);
   return isMobile;
 }
 
-// ── Mobile top bar ────────────────────────────────────────────────────────────
+// ── Mobile top bar — receives achievement trigger from Dashboard via context ──
+// We use a simple event emitter pattern so Dashboard can still own the overlay
+// while the Demo button lives up here.
+export const demoTriggerCallbacks = { current: null };
+
 function MobileTopBar() {
   const handleTrigger = (data) => {
+    // Forward to whatever Dashboard registered
     if (demoTriggerCallbacks.current) {
       demoTriggerCallbacks.current(data);
     }
@@ -327,7 +287,9 @@ function MobileTopBar() {
   return (
     <div style={{
       position: 'fixed',
-      top: 0, left: 0, right: 0,
+      top: 0,
+      left: 0,
+      right: 0,
       height: '52px',
       zIndex: 100,
       display: 'flex',
@@ -359,11 +321,19 @@ function AppInner() {
       overflow: 'hidden',
       background: 'var(--color-background)',
     }}>
+      {/* Keeps status-bar theme-color in sync with dark/light theme */}
+      <ThemeColorSync />
+
+      {/* Desktop sidebar */}
       <Sidebar />
 
+      {/* Main column */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+
+        {/* Mobile-only fixed top bar with Demo + Settings */}
         {isMobile && <MobileTopBar />}
 
+        {/* Scrollable content */}
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <div style={{
             maxWidth: '1100px',
