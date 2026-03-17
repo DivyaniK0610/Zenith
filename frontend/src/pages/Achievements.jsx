@@ -3,17 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Flame, Zap, Star, Target, CheckCircle2,
   Share2, X, Lock, Sparkles, Award, Shield,
-  TrendingUp, Calendar, BarChart2, Instagram, Copy, Check,
-  ChevronRight, RefreshCw,
+  TrendingUp, Calendar, BarChart2, Copy, Check,
+  RefreshCw,
 } from 'lucide-react';
 import { useHabitStore } from '../store/habitStore';
+import { useZenithSounds } from '../hooks/useSound';
 import apiClient from '../api/client';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Achievement Definitions
-// These are the single source of truth — same IDs used in the DB.
 // ─────────────────────────────────────────────────────────────────────────────
 export const ACHIEVEMENT_DEFS = [
   // ── Streaks ────────────────────────────────────────────────────────────────
@@ -221,18 +221,11 @@ export const ACHIEVEMENT_DEFS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // API helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Fetch all earned achievements from the DB for this user. */
 async function fetchEarnedFromDB(userId) {
   const res = await apiClient.get(`/api/v1/achievements/${userId}`);
-  // Returns [{ achievement_id, earned_at }]
   return res.data?.data || [];
 }
 
-/**
- * Unlock a single achievement in the DB.
- * Idempotent — safe to call even if already earned.
- */
 async function unlockInDB(userId, achievementId) {
   await apiClient.post('/api/v1/achievements/unlock', {
     user_id: userId,
@@ -240,10 +233,6 @@ async function unlockInDB(userId, achievementId) {
   });
 }
 
-/**
- * Bulk-sync all currently-earned achievements to the DB.
- * Used on first load to back-fill existing progress.
- */
 async function syncAllToDB(userId, achievementIds) {
   if (!achievementIds.length) return;
   await apiClient.post('/api/v1/achievements/sync', {
@@ -255,7 +244,6 @@ async function syncAllToDB(userId, achievementIds) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Canvas share-card generator
 // ─────────────────────────────────────────────────────────────────────────────
-
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -277,7 +265,6 @@ export function generateShareCard(achievement, userStats) {
     canvas.height = 1080;
     const ctx = canvas.getContext('2d');
 
-    // BG gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
     bgGrad.addColorStop(0, '#0c0a08');
     bgGrad.addColorStop(0.5, '#1a1510');
@@ -285,7 +272,6 @@ export function generateShareCard(achievement, userStats) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, 1080, 1080);
 
-    // Subtle grid
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 1080; i += 60) {
@@ -293,14 +279,12 @@ export function generateShareCard(achievement, userStats) {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
     }
 
-    // Achievement glow
     const glowGrad = ctx.createRadialGradient(540, 480, 0, 540, 480, 500);
     glowGrad.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.4)').replace('0.4', '0.18'));
     glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, 1080, 1080);
 
-    // Top accent line
     const topLine = ctx.createLinearGradient(0, 0, 1080, 0);
     topLine.addColorStop(0, 'rgba(0,0,0,0)');
     topLine.addColorStop(0.5, achievement.color || '#b07030');
@@ -308,7 +292,6 @@ export function generateShareCard(achievement, userStats) {
     ctx.fillStyle = topLine;
     ctx.fillRect(0, 0, 1080, 3);
 
-    // Badge ring glow
     const cx = 540, cy = 420, r = 155;
     const ringGlow = ctx.createRadialGradient(cx, cy, r - 10, cx, cy, r + 40);
     ringGlow.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.4)').replace('0.4', '0.45'));
@@ -316,7 +299,6 @@ export function generateShareCard(achievement, userStats) {
     ctx.fillStyle = ringGlow;
     ctx.beginPath(); ctx.arc(cx, cy, r + 40, 0, Math.PI * 2); ctx.fill();
 
-    // Badge bg
     const bg = achievement.bg || 'rgba(184,115,51,0.12)';
     const badgeBg = ctx.createRadialGradient(cx - 30, cy - 30, 0, cx, cy, r);
     badgeBg.addColorStop(0, bg.replace('0.12', '0.5'));
@@ -324,31 +306,26 @@ export function generateShareCard(achievement, userStats) {
     ctx.fillStyle = badgeBg;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
 
-    // Badge border
     ctx.strokeStyle = (achievement.border || 'rgba(184,115,51,0.3)').replace('0.3', '0.7');
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
 
-    // Emoji
     const emojiMap = { Streaks: '🔥', Levels: '⚡', Habits: '✅', XP: '🏆', Special: '✨' };
     ctx.font = '110px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emojiMap[achievement.category] || '🏆', cx, cy);
 
-    // Title
     ctx.textBaseline = 'alphabetic';
     ctx.font = 'bold 68px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f0e8d8';
     ctx.fillText(achievement.title || 'Achievement', 540, 650);
 
-    // Description
     ctx.font = '34px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = achievement.color || '#b07030';
     ctx.fillText(achievement.description || '', 540, 710);
 
-    // Stats chips
     const stats = [
       `Level ${userStats?.level || 1}`,
       `${userStats?.xp || 0} XP`,
@@ -370,11 +347,9 @@ export function generateShareCard(achievement, userStats) {
       ctx.fillText(stat, x, statY + 9);
     });
 
-    // Divider
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(100, 900, 880, 1);
 
-    // Slate three-slab logo
     const slabX = 432, slabY = 936;
     [
       { x: slabX,      y: slabY,      w: 62, h: 14, r: 4, c0: '#d4954a', c1: '#a06828' },
@@ -388,13 +363,11 @@ export function generateShareCard(achievement, userStats) {
       ctx.fill();
     });
 
-    // Wordmark
     ctx.font = 'bold 34px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = '#e8dece';
     ctx.textAlign = 'left';
     ctx.fillText('Slate', slabX + 74, slabY + 35);
 
-    // URL
     ctx.font = '22px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.32)';
     ctx.textAlign = 'center';
@@ -408,9 +381,9 @@ export function generateShareCard(achievement, userStats) {
 // Share Modal
 // ─────────────────────────────────────────────────────────────────────────────
 function ShareModal({ achievement, userStats, onClose }) {
-  const [imageUrl, setImageUrl]     = useState(null);
-  const [generating, setGenerating] = useState(true);
-  const [copied, setCopied]         = useState(false);
+  const [imageUrl, setImageUrl]       = useState(null);
+  const [generating, setGenerating]   = useState(true);
+  const [copied, setCopied]           = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -485,7 +458,6 @@ function ShareModal({ achievement, userStats, onClose }) {
               </button>
             </div>
 
-            {/* Card preview */}
             <div style={{ padding: '0 20px 14px' }}>
               <div style={{ borderRadius: '14px', overflow: 'hidden', background: 'var(--color-stone)', border: '1px solid var(--color-border)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {generating ? (
@@ -501,7 +473,6 @@ function ShareModal({ achievement, userStats, onClose }) {
               </div>
             </div>
 
-            {/* Actions */}
             <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <motion.button whileTap={{ scale: 0.97 }} onClick={handleNativeShare} disabled={generating}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '13px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, color: 'white', background: generating ? 'var(--color-stone)' : `linear-gradient(135deg, ${achievement.color}, ${achievement.color}cc)`, border: `1px solid ${achievement.border}`, cursor: generating ? 'default' : 'pointer', boxShadow: generating ? 'none' : `0 4px 20px ${achievement.glow}`, transition: 'all 0.2s' }}>
@@ -534,12 +505,34 @@ function ShareModal({ achievement, userStats, onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Achievement Unlock Overlay  (exported — used in App.jsx too)
+// Achievement Unlock Overlay — with SOUNDS
 // ─────────────────────────────────────────────────────────────────────────────
 export function AchievementUnlockOverlay({ achievement, onClose, onShare, userStats }) {
+  const { playLevelUp, playStreak, playSuccess } = useZenithSounds();
+
   useEffect(() => {
-    const t = setTimeout(onClose, 8000);
-    return () => clearTimeout(t);
+    if (!achievement) return;
+
+    // Fire the appropriate sound 120 ms after mount so the overlay is
+    // already visible when the audio starts.
+    const soundTimer = setTimeout(() => {
+      if (achievement.category === 'Levels') {
+        playLevelUp();
+      } else if (achievement.category === 'Streaks') {
+        playStreak();
+      } else {
+        // Habits, XP, Special
+        playSuccess();
+      }
+    }, 120);
+
+    // Auto-dismiss after 8 s
+    const dismissTimer = setTimeout(onClose, 8000);
+
+    return () => {
+      clearTimeout(soundTimer);
+      clearTimeout(dismissTimer);
+    };
   }, [onClose]);
 
   if (!achievement) return null;
@@ -599,7 +592,7 @@ export function AchievementUnlockOverlay({ achievement, onClose, onShare, userSt
               />
             </motion.div>
 
-            {/* Category */}
+            {/* Category pill */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35 }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', borderRadius: '99px', background: achievement.bg, border: `1px solid ${achievement.border}`, marginBottom: '10px' }}
@@ -623,7 +616,7 @@ export function AchievementUnlockOverlay({ achievement, onClose, onShare, userSt
               {achievement.description}
             </motion.p>
 
-            {/* XP reward */}
+            {/* XP reward chip */}
             {achievement.xpReward > 0 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.55, type: 'spring' }}
@@ -654,7 +647,7 @@ export function AchievementUnlockOverlay({ achievement, onClose, onShare, userSt
             </motion.div>
           </div>
 
-          {/* Auto-dismiss bar */}
+          {/* Auto-dismiss progress bar */}
           <motion.div
             initial={{ scaleX: 1 }} animate={{ scaleX: 0 }}
             transition={{ duration: 8, ease: 'linear' }}
@@ -741,7 +734,7 @@ function AchievementCard({ def, earned, earnedAt, onShare, delay = 0 }) {
           </div>
         </div>
 
-        {/* Share */}
+        {/* Share button */}
         {earned && (
           <motion.button
             initial={{ opacity: 0 }}
@@ -766,20 +759,17 @@ const CATEGORIES = ['All', 'Streaks', 'Levels', 'Habits', 'XP', 'Special'];
 export default function Achievements() {
   const { userStats, habits } = useHabitStore();
 
-  // { [achievement_id]: ISO string } — populated from DB
-  const [earnedMap,    setEarnedMap]    = useState({});
-  const [dbLoading,    setDbLoading]    = useState(true);
-  const [syncing,      setSyncing]      = useState(false);
-
-  const [shareTarget,  setShareTarget]  = useState(null);
-  const [filter,       setFilter]       = useState('All');
-  const [onlyEarned,   setOnlyEarned]   = useState(false);
+  const [earnedMap,     setEarnedMap]     = useState({});
+  const [dbLoading,     setDbLoading]     = useState(true);
+  const [syncing,       setSyncing]       = useState(false);
+  const [shareTarget,   setShareTarget]   = useState(null);
+  const [filter,        setFilter]        = useState('All');
+  const [onlyEarned,    setOnlyEarned]    = useState(false);
   const [newlyUnlocked, setNewlyUnlocked] = useState(null);
 
-  // Track which IDs we already loaded from DB so we can detect net-new unlocks
   const dbIdsRef = useRef(new Set());
 
-  // ── Step 1: Load existing earned achievements from DB on mount ─────────────
+  // Step 1: Load from DB
   useEffect(() => {
     setDbLoading(true);
     fetchEarnedFromDB(USER_ID)
@@ -793,35 +783,25 @@ export default function Achievements() {
       .finally(() => setDbLoading(false));
   }, []);
 
-  // ── Step 2: Re-evaluate whenever userStats/habits change ───────────────────
-  //   • Compute the full set of currently-earned IDs from game state
-  //   • Diff against what the DB already knows
-  //   • Persist any new ones (unlock + show overlay)
-  //   • On first run (dbLoading just finished), sync all at once in bulk
+  // Step 2: Evaluate new unlocks
   const prevStatsRef = useRef(null);
 
   useEffect(() => {
-    if (dbLoading) return;        // wait until we have the DB baseline
+    if (dbLoading) return;
     if (!userStats) return;
 
-    // Compute what is earned right now
     const nowEarned = new Set(
       ACHIEVEMENT_DEFS
         .filter(def => def.check(userStats, habits))
         .map(def => def.id)
     );
 
-    // Find anything not yet in the DB
     const brandNew = [...nowEarned].filter(id => !dbIdsRef.current.has(id));
+    if (brandNew.length === 0) return;
 
-    if (brandNew.length === 0) return;  // nothing to do
-
-    // Is this a genuine "new unlock" session (stats actually changed) or
-    // just the first sync after the migration?
     const isFirstSync = dbIdsRef.current.size === 0 && !prevStatsRef.current;
 
     if (isFirstSync) {
-      // Bulk-sync all earned without showing overlays (back-fill)
       setSyncing(true);
       syncAllToDB(USER_ID, brandNew)
         .then(() => fetchEarnedFromDB(USER_ID))
@@ -834,13 +814,9 @@ export default function Achievements() {
         .catch(() => {})
         .finally(() => setSyncing(false));
     } else {
-      // Real new unlock(s) — show overlay for the first one, persist each
-      const [firstNew, ...rest] = brandNew;
-
-      // Persist all new ones
+      const [firstNew] = brandNew;
       brandNew.forEach(id => {
         unlockInDB(USER_ID, id).then(() => {
-          // Refresh local map with the actual DB timestamp
           fetchEarnedFromDB(USER_ID).then(rows => {
             const map = {};
             rows.forEach(r => { map[r.achievement_id] = r.earned_at; });
@@ -849,8 +825,6 @@ export default function Achievements() {
           });
         }).catch(() => {});
       });
-
-      // Show the overlay for the most significant new unlock
       const def = ACHIEVEMENT_DEFS.find(d => d.id === firstNew);
       if (def) setNewlyUnlocked(def);
     }
@@ -858,7 +832,6 @@ export default function Achievements() {
     prevStatsRef.current = userStats;
   }, [userStats, habits, dbLoading]);
 
-  // Derived state
   const earnedIds   = new Set(Object.keys(earnedMap));
   const earnedCount = earnedIds.size;
   const totalCount  = ACHIEVEMENT_DEFS.length;
@@ -888,7 +861,6 @@ export default function Achievements() {
               {dbLoading ? 'Loading…' : `${earnedCount} of ${totalCount} unlocked · saved to your account`}
             </motion.p>
           </div>
-          {/* Sync indicator */}
           {syncing && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--color-text-3)', paddingTop: '6px' }}>
@@ -910,7 +882,6 @@ export default function Achievements() {
         <div style={{ position: 'absolute', top: 0, right: 0, width: '200px', height: '100%', background: 'radial-gradient(ellipse at 100% 50%, rgba(201,164,58,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', position: 'relative' }}>
-          {/* Ring */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <svg width="68" height="68" viewBox="0 0 68 68">
               <circle cx="34" cy="34" r="26" fill="none" stroke="var(--color-stone)" strokeWidth="5" />
@@ -942,7 +913,6 @@ export default function Achievements() {
               <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                 style={{ height: '100%', borderRadius: '99px', background: 'linear-gradient(90deg, var(--color-primary-dim), var(--color-primary), #d4954a)', boxShadow: '0 0 8px rgba(184,115,51,0.35)' }} />
             </div>
-            {/* Per-category mini stats */}
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               {CATEGORIES.filter(c => c !== 'All').map(cat => {
                 const catDefs   = ACHIEVEMENT_DEFS.filter(d => d.category === cat);
