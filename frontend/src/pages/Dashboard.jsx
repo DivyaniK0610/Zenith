@@ -14,6 +14,7 @@ import apiClient from '../api/client';
 import { toast } from 'sonner';
 import { useZenithSounds } from '../hooks/useSound';
 import ZenithDateTimePicker from '../components/ZenithDateTimePicker';
+import { demoTriggerCallbacks } from '../App';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
@@ -621,6 +622,13 @@ export default function Dashboard() {
 
   const handleAchievement  = useCallback((data) => setAchievement(data), []);
   const dismissAchievement = useCallback(() => setAchievement(null), []);
+
+  // Register with the global callback so the Demo button in the
+  // mobile top bar (App.jsx) can trigger overlays from any route.
+  useEffect(() => {
+    demoTriggerCallbacks.current = handleAchievement;
+    return () => { demoTriggerCallbacks.current = null; };
+  }, [handleAchievement]);
 
   const greeting = (() => {
     const h = today.getHours();
