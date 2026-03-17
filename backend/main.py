@@ -18,6 +18,7 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "https://zenith-eta-ruddy.vercel.app",
 ]
 
 app.add_middleware(
@@ -27,6 +28,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Pre-warm embedding model in background ──────────────────────────────
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    asyncio.create_task(
+        asyncio.to_thread(
+            lambda: __import__('app.services.embedding', fromlist=['_get_model'])._get_model()
+        )
+    )
+# ────────────────────────────────────────────────────────────────────────
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from app.api.error_handlers import safe_http_exception_handler, unhandled_exception_handler
