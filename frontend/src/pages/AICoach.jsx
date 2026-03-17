@@ -58,9 +58,9 @@ function Bubble({ msg }) {
   const isUser = msg.role === 'user';
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: '10px' }}
     >
       {!isUser && (
@@ -97,6 +97,28 @@ function Bubble({ msg }) {
   );
 }
 
+// ── Message skeleton — shown while history loads ─────────────────────────────
+function MessageSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 2px' }}>
+      {/* Fake assistant bubble */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+        <div style={{ width: '28px', height: '28px', borderRadius: '9px', background: 'var(--color-stone)', flexShrink: 0 }} />
+        <div style={{ width: '72%', height: '72px', borderRadius: '18px 18px 18px 4px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', animation: 'pulse 1.4s ease-in-out infinite' }} />
+      </div>
+      {/* Fake user bubble */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ width: '52%', height: '44px', borderRadius: '18px 18px 4px 18px', background: 'var(--color-stone)', border: '1px solid var(--color-border)', animation: 'pulse 1.4s ease-in-out infinite', animationDelay: '0.2s' }} />
+      </div>
+      {/* Fake assistant bubble */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+        <div style={{ width: '28px', height: '28px', borderRadius: '9px', background: 'var(--color-stone)', flexShrink: 0 }} />
+        <div style={{ width: '80%', height: '56px', borderRadius: '18px 18px 18px 4px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', animation: 'pulse 1.4s ease-in-out infinite', animationDelay: '0.1s' }} />
+      </div>
+    </div>
+  );
+}
+
 // ── Typing indicator ─────────────────────────────────────────────────────────
 function TypingDot({ delay }) {
   return (
@@ -108,11 +130,11 @@ function TypingDot({ delay }) {
   );
 }
 
-// ── Analysis card ────────────────────────────────────────────────────────────
+// ── Analysis section — lazy loaded ───────────────────────────────────────────
 function AnalysisSection({ analysis, loading, onRefresh }) {
-  const icons = [TrendingUp, AlertTriangle, Target];
+  const icons   = [TrendingUp, AlertTriangle, Target];
   const accents = ['#52a873', '#e07830', '#b07030'];
-  const bgs = ['rgba(82,168,115,0.08)', 'rgba(224,120,48,0.08)', 'rgba(176,112,48,0.08)'];
+  const bgs     = ['rgba(82,168,115,0.08)', 'rgba(224,120,48,0.08)', 'rgba(176,112,48,0.08)'];
   const borders = ['rgba(82,168,115,0.2)', 'rgba(224,120,48,0.2)', 'rgba(176,112,48,0.2)'];
 
   return (
@@ -139,6 +161,16 @@ function AnalysisSection({ analysis, loading, onRefresh }) {
           {[0, 1, 2].map(i => (
             <div key={i} style={{ height: '72px', borderRadius: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: `${i * 0.15}s` }} />
           ))}
+        </div>
+      ) : !analysis ? (
+        /* Idle state — not yet triggered */
+        <div style={{ padding: '24px', borderRadius: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
+          <BarChart2 size={24} style={{ color: 'var(--color-text-3)', margin: '0 auto 8px' }} />
+          <p style={{ fontSize: '12px', color: 'var(--color-text-3)', margin: '0 0 10px' }}>Click refresh to analyze your habits</p>
+          <motion.button whileTap={{ scale: 0.96 }} onClick={onRefresh}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 14px', borderRadius: '9px', fontSize: '11px', fontWeight: 600, color: 'var(--color-primary)', background: 'var(--color-primary-glow)', border: '1px solid var(--color-primary-border)', cursor: 'pointer' }}>
+            <Sparkles size={11} /> Analyze now
+          </motion.button>
         </div>
       ) : analysis?.raw_response ? (
         <div style={{ display: 'grid', gap: '8px' }}>
@@ -190,6 +222,7 @@ export default function AICoach() {
   const [messages, setMessages]               = useState([WELCOME_MESSAGE]);
   const [input, setInput]                     = useState('');
   const [isLoading, setIsLoading]             = useState(false);
+  // Three distinct loading states so they don't block each other
   const [historyLoading, setHistoryLoading]   = useState(true);
   const [analysis, setAnalysis]               = useState(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -199,58 +232,66 @@ export default function AICoach() {
 
   const bottomRef       = useRef(null);
   const inputRef        = useRef(null);
-  // Only auto-scroll when the USER sends a message — never on history load
   const shouldScrollRef = useRef(false);
+  // Track whether embed has been refreshed this session (avoid redundant calls)
+  const embedDoneRef    = useRef(false);
 
+  // Scroll only when user sends — never on load
   useEffect(() => {
     if (!shouldScrollRef.current) return;
     shouldScrollRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // ── OPTIMIZED LOADING ────────────────────────────────────────────────────
+  // Priority 1: Fetch chat history immediately — this is the critical path.
+  // Priority 2: Fire-and-forget embed refresh (no await, no spinner).
+  // Priority 3: Analysis is NOT loaded on mount — only on user demand.
   useEffect(() => {
-    (async () => {
-      const [historyResult] = await Promise.allSettled([
-        apiClient.get(`/api/v1/chat/history/${USER_ID}`),
-        apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }),
-        (async () => {
-          setAnalysisLoading(true);
-          try {
-            const res = await apiClient.get(`/api/v1/chat/analyze/${USER_ID}`);
-            setAnalysis(res.data?.data || null);
-          } catch (_) {
-            setAnalysis(null);
-          } finally {
-            setAnalysisLoading(false);
-          }
-        })(),
-      ]);
-
-      if (historyResult.status === 'fulfilled') {
-        const rows = historyResult.value?.data?.data || [];
+    // --- Critical path: history only ---
+    const loadHistory = async () => {
+      try {
+        const res = await apiClient.get(`/api/v1/chat/history/${USER_ID}`);
+        const rows = res.data?.data || [];
         if (rows.length > 0) {
           setMessages([
             WELCOME_MESSAGE,
             ...rows.map(r => ({ role: r.role, content: r.content, id: r.id })),
           ]);
-          // No auto-scroll on history load — user should see the page header first
         }
+      } catch (_) {
+        // silently fall back to welcome message
+      } finally {
+        setHistoryLoading(false);
+        // Focus input once history is ready
+        setTimeout(() => inputRef.current?.focus(), 50);
       }
-      setHistoryLoading(false);
-    })();
+    };
+
+    loadHistory();
+
+    // --- Non-critical: embed refresh in background, no await ---
+    // Runs independently — doesn't delay the UI
+    if (!embedDoneRef.current) {
+      embedDoneRef.current = true;
+      apiClient.post('/api/v1/chat/embed', { user_id: USER_ID }).catch(() => {});
+    }
+
+    // Analysis is intentionally NOT fetched here — see loadAnalysis()
   }, []);
 
+  // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     const msg = (text || input).trim();
     if (!msg || isLoading) return;
     setInput('');
-    shouldScrollRef.current = true; // scroll down only on user-initiated messages
+    shouldScrollRef.current = true;
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setIsLoading(true);
     try {
       const res = await apiClient.post('/api/v1/chat/message', { user_id: USER_ID, message: msg });
       const reply = res.data?.data?.reply || 'Something went wrong on my end.';
-      shouldScrollRef.current = true; // scroll to show AI reply
+      shouldScrollRef.current = true;
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       shouldScrollRef.current = true;
@@ -260,6 +301,7 @@ export default function AICoach() {
     }
   }, [input, isLoading]);
 
+  // ── Refresh context (manual) ─────────────────────────────────────────────
   const refreshContext = useCallback(async () => {
     setEmbedLoading(true);
     try {
@@ -270,14 +312,7 @@ export default function AICoach() {
     finally { setEmbedLoading(false); }
   }, []);
 
-  const clearHistory = useCallback(async () => {
-    try {
-      await apiClient.delete(`/api/v1/chat/history/${USER_ID}`);
-      setMessages([WELCOME_MESSAGE]);
-      setClearConfirm(false);
-    } catch (_) {}
-  }, []);
-
+  // ── Load analysis — only on demand ──────────────────────────────────────
   const loadAnalysis = useCallback(async () => {
     setAnalysisLoading(true);
     try {
@@ -290,6 +325,15 @@ export default function AICoach() {
     }
   }, []);
 
+  // ── Clear history ────────────────────────────────────────────────────────
+  const clearHistory = useCallback(async () => {
+    try {
+      await apiClient.delete(`/api/v1/chat/history/${USER_ID}`);
+      setMessages([WELCOME_MESSAGE]);
+      setClearConfirm(false);
+    } catch (_) {}
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
@@ -297,17 +341,11 @@ export default function AICoach() {
     >
       {/* ── Header row ── */}
       <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: '8px',
-        marginBottom: '12px',
-        flexWrap: 'wrap',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        gap: '8px', marginBottom: '12px', flexWrap: 'wrap',
       }}>
         <div style={{ minWidth: 0 }}>
-          <motion.h1
-            className="text-display"
-            style={{ marginBottom: '2px' }}
+          <motion.h1 className="text-display" style={{ marginBottom: '2px' }}
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
             AI Coach
           </motion.h1>
@@ -356,7 +394,7 @@ export default function AICoach() {
 
       {/* ── Context strip ── */}
       {userStats && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}
           style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
           {[
             { icon: Zap,       val: `Lv ${userStats.level}`,               color: '#b87333' },
@@ -374,20 +412,14 @@ export default function AICoach() {
       {/* ── Main layout: chat left, analysis right (desktop) ── */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
 
-        {/* Chat column — natural flow, no fixed heights */}
+        {/* Chat column */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
-          {/* Message list — natural height, no maxHeight constraint */}
+          {/* Message list */}
           <div style={{ marginBottom: '10px' }}>
             {historyLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '8px 0' }}>
-                {[1, 2, 3].map(i => (
-                  <div key={i} style={{ display: 'flex', justifyContent: i % 2 === 0 ? 'flex-end' : 'flex-start', gap: '8px' }}>
-                    {i % 2 !== 0 && <div style={{ width: '28px', height: '28px', borderRadius: '9px', background: 'var(--color-stone)', flexShrink: 0 }} />}
-                    <div style={{ height: '52px', width: `${40 + i * 15}%`, borderRadius: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  </div>
-                ))}
-              </div>
+              /* Fast skeleton — shows immediately, no delay */
+              <MessageSkeleton />
             ) : (
               <div style={{ padding: '4px 2px 0' }}>
                 {messages.map((msg, i) => <Bubble key={msg.id || i} msg={msg} />)}
@@ -415,8 +447,9 @@ export default function AICoach() {
             {QUICK_PROMPTS.map(({ icon, text }) => (
               <motion.button key={text} whileTap={{ scale: 0.95 }}
                 onClick={() => sendMessage(text)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 500, cursor: 'pointer', background: 'var(--color-stone)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', whiteSpace: 'nowrap' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary-border)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                disabled={historyLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 500, cursor: historyLoading ? 'default' : 'pointer', background: 'var(--color-stone)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', whiteSpace: 'nowrap', opacity: historyLoading ? 0.5 : 1 }}
+                onMouseEnter={e => { if (!historyLoading) { e.currentTarget.style.borderColor = 'var(--color-primary-border)'; e.currentTarget.style.color = 'var(--color-primary)'; } }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-2)'; }}
               >
                 <span>{icon}</span>{text}
@@ -434,7 +467,14 @@ export default function AICoach() {
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                 placeholder="Ask me anything about your habits…"
                 disabled={historyLoading}
-                style={{ width: '100%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '12px 46px 12px 16px', color: 'var(--color-text-1)', fontSize: '13px', fontFamily: 'var(--font-sans)', outline: 'none', transition: 'border-color 0.15s', boxSizing: 'border-box', opacity: historyLoading ? 0.5 : 1 }}
+                style={{
+                  width: '100%', background: 'var(--color-surface-2)',
+                  border: '1px solid var(--color-border)', borderRadius: '12px',
+                  padding: '12px 46px 12px 16px', color: 'var(--color-text-1)',
+                  fontSize: '13px', fontFamily: 'var(--font-sans)', outline: 'none',
+                  transition: 'border-color 0.15s', boxSizing: 'border-box',
+                  opacity: historyLoading ? 0.5 : 1,
+                }}
                 onFocus={e => e.target.style.borderColor = 'var(--color-primary-border)'}
                 onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
               />
@@ -442,7 +482,16 @@ export default function AICoach() {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isLoading || historyLoading}
-                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', width: '30px', height: '30px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: input.trim() ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))' : 'var(--color-stone)', border: input.trim() ? '1px solid rgba(184,115,51,0.3)' : '1px solid var(--color-border)', cursor: input.trim() ? 'pointer' : 'default', color: input.trim() ? '#fff' : 'var(--color-text-3)', transition: 'all 0.15s' }}
+                style={{
+                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                  width: '30px', height: '30px', borderRadius: '9px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: input.trim() ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dim))' : 'var(--color-stone)',
+                  border: input.trim() ? '1px solid rgba(184,115,51,0.3)' : '1px solid var(--color-border)',
+                  cursor: input.trim() && !historyLoading ? 'pointer' : 'default',
+                  color: input.trim() ? '#fff' : 'var(--color-text-3)',
+                  transition: 'all 0.15s',
+                }}
               >
                 {isLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={12} />}
               </motion.button>
@@ -450,9 +499,13 @@ export default function AICoach() {
           </div>
         </div>
 
-        {/* Analysis panel — desktop only */}
+        {/* Analysis panel — desktop only, lazy loaded */}
         <div className="hidden md:block" style={{ width: '280px', flexShrink: 0 }}>
-          <AnalysisSection analysis={analysis} loading={analysisLoading} onRefresh={loadAnalysis} />
+          <AnalysisSection
+            analysis={analysis}
+            loading={analysisLoading}
+            onRefresh={loadAnalysis}
+          />
 
           <div style={{ borderRadius: '14px', padding: '14px', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', left: 0, top: '8px', bottom: '8px', width: '3px', borderRadius: '0 3px 3px 0', background: 'linear-gradient(to bottom, var(--color-primary), var(--color-primary-dim))' }} />
