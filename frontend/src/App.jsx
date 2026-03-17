@@ -13,7 +13,7 @@ import { Settings, X, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
 import ThemeColorSync from './components/ThemeColorSync';
 
-// ── Test achievement panel (imported here for mobile top bar) ─────────────────
+// ── Test achievement panel ────────────────────────────────────────────────────
 const TEST_ACHIEVEMENTS = [
   { label: '⚡ Level Up overlay',     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
   { label: '🔥 7-day streak reward',  data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
@@ -38,13 +38,13 @@ function TestPanel({ onTrigger }) {
         whileTap={{ scale: 0.93 }}
         style={{
           display: 'flex', alignItems: 'center', gap: '5px',
-          padding: '0 10px', height: '34px', borderRadius: '10px',
-          background: open ? 'rgba(184,115,51,0.15)' : 'rgba(0,0,0,0.35)',
-          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
+          padding: '0 12px', height: '34px', borderRadius: '10px',
+          // Same amber ghost style as "Add Habit" button
+          background: open ? 'rgba(184,115,51,0.2)' : 'var(--color-primary-glow)',
+          color: 'var(--color-primary)',
+          border: '1px solid var(--color-primary-border)',
           cursor: 'pointer', fontSize: '12px', fontWeight: 600,
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          letterSpacing: '-0.01em',
           transition: 'all 0.15s',
         }}
       >
@@ -158,7 +158,6 @@ function SettingsPopover({ onClose, anchorRef }) {
         pointerEvents: 'none',
       }} />
 
-      {/* Profile */}
       <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div style={{
@@ -202,7 +201,6 @@ function SettingsPopover({ onClose, anchorRef }) {
         </div>
       </div>
 
-      {/* Theme */}
       <div style={{ padding: '10px 12px 12px' }}>
         <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)', marginBottom: '8px', paddingLeft: '2px' }}>
           Appearance
@@ -227,12 +225,11 @@ function SettingsButton() {
         style={{
           width: '34px', height: '34px', borderRadius: '10px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: open ? 'rgba(184,115,51,0.12)' : 'rgba(0,0,0,0.35)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
-          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
+          // Same amber ghost style as "Add Habit" button
+          background: open ? 'rgba(184,115,51,0.2)' : 'var(--color-primary-glow)',
+          border: '1px solid var(--color-primary-border)',
+          color: 'var(--color-primary)',
           cursor: 'pointer', transition: 'all 0.15s',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
         <AnimatePresence mode="wait">
@@ -271,14 +268,10 @@ function useIsMobile() {
   return isMobile;
 }
 
-// ── Mobile top bar — receives achievement trigger from Dashboard via context ──
-// We use a simple event emitter pattern so Dashboard can still own the overlay
-// while the Demo button lives up here.
 export const demoTriggerCallbacks = { current: null };
 
 function MobileTopBar() {
   const handleTrigger = (data) => {
-    // Forward to whatever Dashboard registered
     if (demoTriggerCallbacks.current) {
       demoTriggerCallbacks.current(data);
     }
@@ -287,9 +280,7 @@ function MobileTopBar() {
   return (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
+      top: 0, left: 0, right: 0,
       height: '52px',
       zIndex: 100,
       display: 'flex',
@@ -321,19 +312,12 @@ function AppInner() {
       overflow: 'hidden',
       background: 'var(--color-background)',
     }}>
-      {/* Keeps status-bar theme-color in sync with dark/light theme */}
       <ThemeColorSync />
-
-      {/* Desktop sidebar */}
       <Sidebar />
 
-      {/* Main column */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-
-        {/* Mobile-only fixed top bar with Demo + Settings */}
         {isMobile && <MobileTopBar />}
 
-        {/* Scrollable content */}
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <div style={{
             maxWidth: '1100px',
