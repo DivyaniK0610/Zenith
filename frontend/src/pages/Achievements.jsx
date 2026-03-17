@@ -261,101 +261,255 @@ function roundRectPath(ctx, x, y, w, h, r) {
 export function generateShareCard(achievement, userStats) {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
+    // Instagram Story: 1080 x 1920 (9:16)
     canvas.width = 1080;
-    canvas.height = 1080;
+    canvas.height = 1920;
     const ctx = canvas.getContext('2d');
 
-    const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
-    bgGrad.addColorStop(0, '#0c0a08');
-    bgGrad.addColorStop(0.5, '#1a1510');
-    bgGrad.addColorStop(1, '#0c0a08');
+    // ── Background ──────────────────────────────────────────────────────
+    const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    bgGrad.addColorStop(0,   '#0a0804');
+    bgGrad.addColorStop(0.4, '#130f09');
+    bgGrad.addColorStop(1,   '#0c0a08');
     ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, 1080, 1080);
+    ctx.fillRect(0, 0, 1080, 1920);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    // ── Subtle grid texture ──────────────────────────────────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,0.025)';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 1080; i += 60) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1080); ctx.stroke();
+    for (let i = 0; i <= 1080; i += 54) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1920); ctx.stroke();
+    }
+    for (let i = 0; i <= 1920; i += 54) {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
     }
 
-    const glowGrad = ctx.createRadialGradient(540, 480, 0, 540, 480, 500);
-    glowGrad.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.4)').replace('0.4', '0.18'));
-    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    // ── Diagonal grain lines (like brushed metal) ────────────────────────
+    ctx.save();
+    ctx.globalAlpha = 0.015;
+    ctx.strokeStyle = '#d4954a';
+    ctx.lineWidth = 1;
+    for (let i = -1920; i < 1920; i += 18) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + 1920, 1920);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── Big radial glow centered on icon area ────────────────────────────
+    const cx = 540, cy = 820;
+    const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 680);
+    const glowColor = achievement.glow || 'rgba(184,115,51,0.4)';
+    glowGrad.addColorStop(0,   glowColor.replace(/[\d.]+\)$/, '0.22)'));
+    glowGrad.addColorStop(0.5, glowColor.replace(/[\d.]+\)$/, '0.08)'));
+    glowGrad.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = glowGrad;
-    ctx.fillRect(0, 0, 1080, 1080);
+    ctx.fillRect(0, 0, 1080, 1920);
 
+    // ── Top accent line ──────────────────────────────────────────────────
     const topLine = ctx.createLinearGradient(0, 0, 1080, 0);
-    topLine.addColorStop(0, 'rgba(0,0,0,0)');
-    topLine.addColorStop(0.5, achievement.color || '#b07030');
-    topLine.addColorStop(1, 'rgba(0,0,0,0)');
+    topLine.addColorStop(0,   'rgba(0,0,0,0)');
+    topLine.addColorStop(0.3, achievement.color || '#b07030');
+    topLine.addColorStop(0.7, achievement.color || '#b07030');
+    topLine.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = topLine;
-    ctx.fillRect(0, 0, 1080, 3);
+    ctx.fillRect(0, 0, 1080, 4);
 
-    const cx = 540, cy = 420, r = 155;
-    const ringGlow = ctx.createRadialGradient(cx, cy, r - 10, cx, cy, r + 40);
-    ringGlow.addColorStop(0, (achievement.glow || 'rgba(184,115,51,0.4)').replace('0.4', '0.45'));
-    ringGlow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = ringGlow;
-    ctx.beginPath(); ctx.arc(cx, cy, r + 40, 0, Math.PI * 2); ctx.fill();
+    // ── Bottom accent line ───────────────────────────────────────────────
+    ctx.fillStyle = topLine;
+    ctx.fillRect(0, 1916, 1080, 4);
 
-    const bg = achievement.bg || 'rgba(184,115,51,0.12)';
-    const badgeBg = ctx.createRadialGradient(cx - 30, cy - 30, 0, cx, cy, r);
-    badgeBg.addColorStop(0, bg.replace('0.12', '0.5'));
-    badgeBg.addColorStop(1, bg.replace('0.12', '0.15'));
-    ctx.fillStyle = badgeBg;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    // ── Decorative corner brackets (top-left, top-right) ────────────────
+    const bracketColor = (achievement.color || '#b07030') + '60';
+    const bSize = 60, bStroke = 2, bPad = 40;
+    ctx.strokeStyle = bracketColor;
+    ctx.lineWidth = bStroke;
+    // Top-left
+    ctx.beginPath(); ctx.moveTo(bPad + bSize, bPad); ctx.lineTo(bPad, bPad); ctx.lineTo(bPad, bPad + bSize); ctx.stroke();
+    // Top-right
+    ctx.beginPath(); ctx.moveTo(1080 - bPad - bSize, bPad); ctx.lineTo(1080 - bPad, bPad); ctx.lineTo(1080 - bPad, bPad + bSize); ctx.stroke();
+    // Bottom-left
+    ctx.beginPath(); ctx.moveTo(bPad + bSize, 1920 - bPad); ctx.lineTo(bPad, 1920 - bPad); ctx.lineTo(bPad, 1920 - bPad - bSize); ctx.stroke();
+    // Bottom-right
+    ctx.beginPath(); ctx.moveTo(1080 - bPad - bSize, 1920 - bPad); ctx.lineTo(1080 - bPad, 1920 - bPad); ctx.lineTo(1080 - bPad, 1920 - bPad - bSize); ctx.stroke();
 
-    ctx.strokeStyle = (achievement.border || 'rgba(184,115,51,0.3)').replace('0.3', '0.7');
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-
-    const emojiMap = { Streaks: '🔥', Levels: '⚡', Habits: '✅', XP: '🏆', Special: '✨' };
-    ctx.font = '110px serif';
+    // ── "ACHIEVEMENT UNLOCKED" header label ──────────────────────────────
     ctx.textAlign = 'center';
+    // Decorative lines flanking label
+    ctx.strokeStyle = (achievement.color || '#b07030') + '55';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(120, 200); ctx.lineTo(390, 200); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(690, 200); ctx.lineTo(960, 200); ctx.stroke();
+
+    ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillStyle = achievement.color || '#b07030';
+    ctx.letterSpacing = '6px';
+    ctx.fillText('ACHIEVEMENT UNLOCKED', 540, 208);
+
+    // ── Category pill ────────────────────────────────────────────────────
+    const catText = (achievement.category || 'Special').toUpperCase();
+    ctx.font = '600 20px -apple-system, BlinkMacSystemFont, sans-serif';
+    const catWidth = ctx.measureText(catText).width + 40;
+    roundRectPath(ctx, 540 - catWidth/2, 240, catWidth, 44, 22);
+    ctx.fillStyle = (achievement.bg || 'rgba(184,115,51,0.12)').replace(/[\d.]+\)$/, '0.18)');
+    ctx.fill();
+    ctx.strokeStyle = (achievement.border || 'rgba(184,115,51,0.3)');
+    ctx.lineWidth = 1.5;
+    roundRectPath(ctx, 540 - catWidth/2, 240, catWidth, 44, 22);
+    ctx.stroke();
+    ctx.fillStyle = achievement.color || '#b07030';
+    ctx.fillText(catText, 540, 270);
+
+    // ── Large icon badge ─────────────────────────────────────────────────
+    const iconR = 200;
+    // Outer glow ring (multiple passes for soft effect)
+    for (let gPass = 3; gPass > 0; gPass--) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, iconR + gPass * 18, 0, Math.PI * 2);
+      ctx.strokeStyle = (achievement.glow || 'rgba(184,115,51,0.4)').replace(/[\d.]+\)$/, `${0.06 * gPass})`);
+      ctx.lineWidth = 12;
+      ctx.stroke();
+    }
+
+    // Badge background (radial gradient inside circle)
+    const badgeBg = ctx.createRadialGradient(cx - 50, cy - 50, 0, cx, cy, iconR);
+    const bg = achievement.bg || 'rgba(184,115,51,0.12)';
+    badgeBg.addColorStop(0, bg.replace(/[\d.]+\)$/, '0.55)'));
+    badgeBg.addColorStop(1, bg.replace(/[\d.]+\)$/, '0.18)'));
+    ctx.beginPath();
+    ctx.arc(cx, cy, iconR, 0, Math.PI * 2);
+    ctx.fillStyle = badgeBg;
+    ctx.fill();
+
+    // Badge border
+    ctx.beginPath();
+    ctx.arc(cx, cy, iconR, 0, Math.PI * 2);
+    ctx.strokeStyle = (achievement.border || 'rgba(184,115,51,0.3)').replace(/[\d.]+\)$/, '0.85)');
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner ring (decorative)
+    ctx.beginPath();
+    ctx.arc(cx, cy, iconR - 16, 0, Math.PI * 2);
+    ctx.strokeStyle = (achievement.border || 'rgba(184,115,51,0.3)').replace(/[\d.]+\)$/, '0.3)');
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ── Category emoji (large, centered) ─────────────────────────────────
+    const emojiMap = {
+      Streaks: '🔥', Levels: '⚡', Habits: '✅', XP: '🏆', Special: '✨'
+    };
+    ctx.font = '160px serif';
     ctx.textBaseline = 'middle';
     ctx.fillText(emojiMap[achievement.category] || '🏆', cx, cy);
-
     ctx.textBaseline = 'alphabetic';
-    ctx.font = 'bold 68px -apple-system, BlinkMacSystemFont, sans-serif';
+
+    // ── Achievement Title ─────────────────────────────────────────────────
+    ctx.font = '800 88px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f0e8d8';
-    ctx.fillText(achievement.title || 'Achievement', 540, 650);
+    ctx.fillText(achievement.title || 'Achievement', 540, 1115);
 
-    ctx.font = '34px -apple-system, BlinkMacSystemFont, sans-serif';
+    // ── Description ───────────────────────────────────────────────────────
+    ctx.font = '400 40px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.fillStyle = achievement.color || '#b07030';
-    ctx.fillText(achievement.description || '', 540, 710);
+    ctx.fillText(achievement.description || '', 540, 1180);
 
-    const stats = [
-      `Level ${userStats?.level || 1}`,
-      `${userStats?.xp || 0} XP`,
-      `${userStats?.longest_streak || 0}d streak`,
+    // ── Thin separator ────────────────────────────────────────────────────
+    const sepGrad = ctx.createLinearGradient(100, 0, 980, 0);
+    sepGrad.addColorStop(0,   'rgba(255,255,255,0)');
+    sepGrad.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+    sepGrad.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = sepGrad;
+    ctx.fillRect(100, 1230, 880, 1);
+
+    // ── Stats row (3 cards) ───────────────────────────────────────────────
+    const statsData = [
+      { val: `Level ${userStats?.level || 1}`, label: 'LEVEL', icon: '⚡' },
+      { val: `${userStats?.xp || 0}`,          label: 'TOTAL XP', icon: '✦' },
+      { val: `${userStats?.longest_streak || 0}d`, label: 'BEST STREAK', icon: '🔥' },
     ];
-    const statY = 810;
-    stats.forEach((stat, i) => {
-      const x = 200 + i * 340;
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      roundRectPath(ctx, x - 88, statY - 28, 176, 54, 12);
+    const cardW = 280, cardH = 130, cardGap = 20;
+    const totalCardsW = statsData.length * cardW + (statsData.length - 1) * cardGap;
+    const cardsStartX = (1080 - totalCardsW) / 2;
+    const cardsY = 1270;
+
+    statsData.forEach((stat, i) => {
+      const x = cardsStartX + i * (cardW + cardGap);
+
+      // Card background
+      roundRectPath(ctx, x, cardsY, cardW, cardH, 18);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 1;
-      roundRectPath(ctx, x - 88, statY - 28, 176, 54, 12);
+      roundRectPath(ctx, x, cardsY, cardW, cardH, 18);
       ctx.stroke();
-      ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#e8dece';
+
+      // Icon
+      ctx.font = '28px serif';
       ctx.textAlign = 'center';
-      ctx.fillText(stat, x, statY + 9);
+      ctx.fillText(stat.icon, x + cardW/2, cardsY + 42);
+
+      // Value
+      ctx.font = '700 36px "DM Mono", "Fira Code", monospace';
+      ctx.fillStyle = '#f0e8d8';
+      ctx.fillText(stat.val, x + cardW/2, cardsY + 84);
+
+      // Label
+      ctx.font = '600 18px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.letterSpacing = '2px';
+      ctx.fillText(stat.label, x + cardW/2, cardsY + 114);
+      ctx.letterSpacing = '0px';
     });
 
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(100, 900, 880, 1);
+    // ── XP bonus badge (if applicable) ───────────────────────────────────
+    if (achievement.xpReward && achievement.xpReward > 0) {
+      const bonusY = 1440;
+      const bonusText = `+${achievement.xpReward} BONUS XP`;
+      ctx.font = '700 28px -apple-system, BlinkMacSystemFont, sans-serif';
+      const bonusW = ctx.measureText(bonusText).width + 60;
+      roundRectPath(ctx, 540 - bonusW/2, bonusY, bonusW, 56, 28);
+      ctx.fillStyle = 'rgba(201,164,58,0.12)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(201,164,58,0.4)';
+      ctx.lineWidth = 1.5;
+      roundRectPath(ctx, 540 - bonusW/2, bonusY, bonusW, 56, 28);
+      ctx.stroke();
+      ctx.fillStyle = '#c9a43a';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ ${bonusText}`, 540, bonusY + 36);
+    }
 
-    const slabX = 432, slabY = 936;
-    [
-      { x: slabX,      y: slabY,      w: 62, h: 14, r: 4, c0: '#d4954a', c1: '#a06828' },
-      { x: slabX + 6,  y: slabY + 18, w: 50, h: 12, r: 3, c0: '#be7430', c1: '#885018' },
-      { x: slabX + 12, y: slabY + 34, w: 38, h: 10, r: 3, c0: '#9a5c20', c1: '#683c10' },
-    ].forEach(({ x, y, w, h, r, c0, c1 }) => {
+    // ── Motivational quote ────────────────────────────────────────────────
+    const quoteY = achievement.xpReward > 0 ? 1540 : 1480;
+    ctx.font = 'italic 32px Georgia, "Times New Roman", serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.textAlign = 'center';
+    const quotes = {
+      Streaks: '"Consistency is the only cheat code."',
+      Levels:  '"The grind is paying off."',
+      Habits:  '"Small wins compound into big results."',
+      XP:      '"Every rep counts."',
+      Special: '"Built different."',
+    };
+    ctx.fillText(quotes[achievement.category] || '"Keep building."', 540, quoteY);
+
+    // ── Branding section ──────────────────────────────────────────────────
+    // Separator
+    ctx.fillStyle = sepGrad;
+    ctx.fillRect(100, quoteY + 50, 880, 1);
+
+    // Slate logo slabs (centered)
+    const slabX = 540 - 85, slabY = quoteY + 80;
+    const slabs = [
+      { x: slabX,      y: slabY,      w: 68, h: 16, r: 5, c0: '#d4954a', c1: '#a06828' },
+      { x: slabX + 7,  y: slabY + 20, w: 54, h: 13, r: 4, c0: '#be7430', c1: '#885018' },
+      { x: slabX + 14, y: slabY + 37, w: 40, h: 11, r: 3, c0: '#9a5c20', c1: '#683c10' },
+    ];
+    slabs.forEach(({ x, y, w, h, r, c0, c1 }) => {
       const g = ctx.createLinearGradient(x, y, x + w, y + h);
       g.addColorStop(0, c0); g.addColorStop(1, c1);
       ctx.fillStyle = g;
@@ -363,15 +517,17 @@ export function generateShareCard(achievement, userStats) {
       ctx.fill();
     });
 
-    ctx.font = 'bold 34px -apple-system, BlinkMacSystemFont, sans-serif';
+    // "Slate" wordmark
+    ctx.font = '700 44px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
     ctx.fillStyle = '#e8dece';
     ctx.textAlign = 'left';
-    ctx.fillText('Slate', slabX + 74, slabY + 35);
+    ctx.fillText('Slate', slabX + 82, slabY + 40);
 
-    ctx.font = '22px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    // URL
+    ctx.font = '400 28px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
     ctx.textAlign = 'center';
-    ctx.fillText('slate-app.io', 540, 1046);
+    ctx.fillText('slate-app.io  ·  Build habits. Earn XP.', 540, quoteY + 160);
 
     resolve(canvas.toDataURL('image/png', 1.0));
   });
@@ -459,7 +615,7 @@ function ShareModal({ achievement, userStats, onClose }) {
             </div>
 
             <div style={{ padding: '0 20px 14px' }}>
-              <div style={{ borderRadius: '14px', overflow: 'hidden', background: 'var(--color-stone)', border: '1px solid var(--color-border)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ borderRadius: '14px', overflow: 'hidden', background: 'var(--color-stone)', border: '1px solid var(--color-border)', aspectRatio: '9/16', maxHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {generating ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
