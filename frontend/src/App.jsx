@@ -13,7 +13,42 @@ import { Settings, X, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
 import ThemeColorSync from './components/ThemeColorSync';
 
-// ── Test achievement panel (imported here for mobile top bar) ─────────────────
+// ── SlateMark — same three-slab SVG used in Sidebar ──────────────────────────
+function SlateMark({ size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="mob-sm-bg" x1="0" y1="0" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1c1812"/>
+          <stop offset="100%" stopColor="#0c0a08"/>
+        </linearGradient>
+        <linearGradient id="mob-sm-g1" x1="5" y1="9"  x2="25" y2="9"  gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#d4954a"/>
+          <stop offset="100%" stopColor="#a06828"/>
+        </linearGradient>
+        <linearGradient id="mob-sm-g2" x1="7" y1="15" x2="23" y2="15" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#be7430"/>
+          <stop offset="100%" stopColor="#885018"/>
+        </linearGradient>
+        <linearGradient id="mob-sm-g3" x1="9" y1="21" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#9a5c20"/>
+          <stop offset="100%" stopColor="#683c10"/>
+        </linearGradient>
+      </defs>
+      <rect width="30" height="30" rx="8" fill="url(#mob-sm-bg)"/>
+      <rect x="0" y="0" width="30" height="1" rx="0.5" fill="white" opacity="0.08"/>
+      {/* Top slab */}
+      <rect x="5"  y="7"    width="20" height="5"   rx="2.5"  fill="url(#mob-sm-g1)"/>
+      <rect x="5"  y="7"    width="20" height="1"   rx="0.5"  fill="white" opacity="0.14"/>
+      {/* Middle slab */}
+      <rect x="7"  y="14"   width="16" height="4.5" rx="2.25" fill="url(#mob-sm-g2)"/>
+      {/* Bottom slab */}
+      <rect x="9"  y="20.5" width="12" height="4"   rx="2"    fill="url(#mob-sm-g3)"/>
+    </svg>
+  );
+}
+
+// ── Test achievement panel ────────────────────────────────────────────────────
 const TEST_ACHIEVEMENTS = [
   { label: '⚡ Level Up overlay',     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
   { label: '🔥 7-day streak reward',  data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
@@ -38,13 +73,12 @@ function TestPanel({ onTrigger }) {
         whileTap={{ scale: 0.93 }}
         style={{
           display: 'flex', alignItems: 'center', gap: '5px',
-          padding: '0 10px', height: '34px', borderRadius: '10px',
-          background: open ? 'rgba(184,115,51,0.15)' : 'rgba(0,0,0,0.35)',
-          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
+          padding: '0 12px', height: '34px', borderRadius: '10px',
+          background: open ? 'rgba(184,115,51,0.2)' : 'var(--color-primary-glow)',
+          color: 'var(--color-primary)',
+          border: '1px solid var(--color-primary-border)',
           cursor: 'pointer', fontSize: '12px', fontWeight: 600,
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          letterSpacing: '-0.01em',
           transition: 'all 0.15s',
         }}
       >
@@ -158,7 +192,6 @@ function SettingsPopover({ onClose, anchorRef }) {
         pointerEvents: 'none',
       }} />
 
-      {/* Profile */}
       <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <div style={{
@@ -202,7 +235,6 @@ function SettingsPopover({ onClose, anchorRef }) {
         </div>
       </div>
 
-      {/* Theme */}
       <div style={{ padding: '10px 12px 12px' }}>
         <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-3)', marginBottom: '8px', paddingLeft: '2px' }}>
           Appearance
@@ -227,12 +259,10 @@ function SettingsButton() {
         style={{
           width: '34px', height: '34px', borderRadius: '10px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: open ? 'rgba(184,115,51,0.12)' : 'rgba(0,0,0,0.35)',
-          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
-          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
+          background: open ? 'rgba(184,115,51,0.2)' : 'var(--color-primary-glow)',
+          border: '1px solid var(--color-primary-border)',
+          color: 'var(--color-primary)',
           cursor: 'pointer', transition: 'all 0.15s',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
         <AnimatePresence mode="wait">
@@ -271,14 +301,11 @@ function useIsMobile() {
   return isMobile;
 }
 
-// ── Mobile top bar — receives achievement trigger from Dashboard via context ──
-// We use a simple event emitter pattern so Dashboard can still own the overlay
-// while the Demo button lives up here.
 export const demoTriggerCallbacks = { current: null };
 
+// ── Mobile top bar ────────────────────────────────────────────────────────────
 function MobileTopBar() {
   const handleTrigger = (data) => {
-    // Forward to whatever Dashboard registered
     if (demoTriggerCallbacks.current) {
       demoTriggerCallbacks.current(data);
     }
@@ -287,20 +314,41 @@ function MobileTopBar() {
   return (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
+      top: 0, left: 0, right: 0,
       height: '52px',
       zIndex: 100,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: '6px',
+      justifyContent: 'space-between',
       paddingRight: '16px',
       paddingLeft: '16px',
       background: 'transparent',
       pointerEvents: 'none',
     }}>
+      {/* ── Left: logo + wordmark ── */}
+      <motion.div
+        initial={{ opacity: 0, x: -6 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          pointerEvents: 'auto',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}
+      >
+        <SlateMark size={26} />
+        <span style={{
+          fontFamily: 'var(--font-sans)',
+          fontSize: '16px',
+          fontWeight: 700,
+          letterSpacing: '-0.03em',
+          color: 'var(--color-warm-white)',
+          lineHeight: 1,
+        }}>
+          Slate
+        </span>
+      </motion.div>
+
+      {/* ── Right: Demo + Settings ── */}
       <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <TestPanel onTrigger={handleTrigger} />
         <SettingsButton />
@@ -321,19 +369,12 @@ function AppInner() {
       overflow: 'hidden',
       background: 'var(--color-background)',
     }}>
-      {/* Keeps status-bar theme-color in sync with dark/light theme */}
       <ThemeColorSync />
-
-      {/* Desktop sidebar */}
       <Sidebar />
 
-      {/* Main column */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-
-        {/* Mobile-only fixed top bar with Demo + Settings */}
         {isMobile && <MobileTopBar />}
 
-        {/* Scrollable content */}
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <div style={{
             maxWidth: '1100px',
