@@ -9,8 +9,108 @@ import Timer from './pages/Timer';
 import Goals from './pages/Goals';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHabitStore } from './store/habitStore';
-import { Settings, X, Zap } from 'lucide-react';
+import { Settings, X, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
+
+// ── Test achievement panel (imported here for mobile top bar) ─────────────────
+const TEST_ACHIEVEMENTS = [
+  { label: '⚡ Level Up overlay',     data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
+  { label: '🔥 7-day streak reward',  data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
+  { label: '🔥 30-day streak reward', data: { type: 'streak', current_streak: 30, xp_gained: 210, milestone_bonus: 200, message: 'On fire. 30 days straight.' } },
+];
+
+function TestPanel({ onTrigger }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <motion.button
+        onClick={() => setOpen(o => !o)}
+        whileTap={{ scale: 0.93 }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '5px',
+          padding: '0 10px', height: '34px', borderRadius: '10px',
+          background: open ? 'rgba(184,115,51,0.15)' : 'rgba(0,0,0,0.35)',
+          color: open ? 'var(--color-primary)' : 'var(--color-text-3)',
+          border: `1px solid ${open ? 'var(--color-primary-border)' : 'rgba(255,255,255,0.08)'}`,
+          cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          transition: 'all 0.15s',
+        }}
+      >
+        <Sparkles size={11} />
+        Demo
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18 }}>
+          <ChevronDown size={10} />
+        </motion.div>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -6 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              right: 0,
+              zIndex: 300,
+              minWidth: '200px',
+              borderRadius: '12px',
+              background: 'var(--color-surface-2)',
+              border: '1px solid var(--color-primary-border)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              position: 'absolute', inset: '0 0 auto 0', height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(184,115,51,0.4), transparent)',
+            }} />
+            <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-3)' }}>
+                Feature demos
+              </span>
+            </div>
+            {TEST_ACHIEVEMENTS.map(({ label, data }, i) => (
+              <motion.button
+                key={label}
+                onClick={() => { onTrigger(data); setOpen(false); }}
+                whileHover={{ x: 3 }}
+                transition={{ duration: 0.1 }}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '10px 12px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  color: 'var(--color-text-2)', fontSize: '12px',
+                  borderBottom: i < TEST_ACHIEVEMENTS.length - 1 ? '1px solid var(--color-border)' : 'none',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(184,115,51,0.07)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ fontSize: '13px' }}>{label.split(' ')[0]}</span>
+                <span>{label.split(' ').slice(1).join(' ')}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // ── Settings popover ──────────────────────────────────────────────────────────
 function SettingsPopover({ onClose, anchorRef }) {
@@ -170,6 +270,44 @@ function useIsMobile() {
   return isMobile;
 }
 
+// ── Mobile top bar — receives achievement trigger from Dashboard via context ──
+// We use a simple event emitter pattern so Dashboard can still own the overlay
+// while the Demo button lives up here.
+export const demoTriggerCallbacks = { current: null };
+
+function MobileTopBar() {
+  const handleTrigger = (data) => {
+    // Forward to whatever Dashboard registered
+    if (demoTriggerCallbacks.current) {
+      demoTriggerCallbacks.current(data);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '52px',
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: '6px',
+      paddingRight: '16px',
+      paddingLeft: '16px',
+      background: 'transparent',
+      pointerEvents: 'none',
+    }}>
+      <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <TestPanel onTrigger={handleTrigger} />
+        <SettingsButton />
+      </div>
+    </div>
+  );
+}
+
 // ── App shell ─────────────────────────────────────────────────────────────────
 function AppInner() {
   const location = useLocation();
@@ -188,42 +326,15 @@ function AppInner() {
       {/* Main column */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
 
-        {/*
-          Mobile-only top bar — FIXED positioned so it floats above content
-          without consuming flex space. Content gets paddingTop to compensate.
-          Fully transparent background — backdrop blur gives visual separation.
-        */}
-        {isMobile && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '52px',
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            paddingRight: '20px',
-            paddingLeft: '20px',
-            // Fully transparent — no color strip
-            background: 'transparent',
-            pointerEvents: 'none', // let touches pass through to content below
-          }}>
-            {/* Only the button itself captures pointer events */}
-            <div style={{ pointerEvents: 'auto' }}>
-              <SettingsButton />
-            </div>
-          </div>
-        )}
+        {/* Mobile-only fixed top bar with Demo + Settings */}
+        {isMobile && <MobileTopBar />}
 
-        {/* Scrollable content — paddingTop accounts for fixed top bar on mobile */}
+        {/* Scrollable content */}
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <div style={{
             maxWidth: '1100px',
             margin: '0 auto',
-            // On mobile: extra top padding so content starts below the fixed gear button
-            padding: isMobile ? '60px 20px 120px 20px' : '28px 32px 48px 32px',
+            padding: isMobile ? '60px 16px 120px 16px' : '28px 32px 48px 32px',
           }}>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
