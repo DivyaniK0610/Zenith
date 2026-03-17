@@ -1,17 +1,18 @@
 import React, { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Target } from 'lucide-react';
+import { LayoutDashboard, BarChart2, BrainCircuit, Timer, Target, Trophy } from 'lucide-react';
 import { useHabitStore } from '../../store/habitStore';
 import ThemeToggle from '../ThemeToggle';
 import { useZenithSounds } from '../../hooks/useSound';
 
 const navItems = [
-  { name: 'Dashboard', path: '/',          icon: LayoutDashboard, shortcut: 'D' },
-  { name: 'Analytics', path: '/analytics', icon: BarChart2,       shortcut: 'A' },
-  { name: 'Goals',     path: '/goals',     icon: Target,          shortcut: 'G' },
-  { name: 'AI Coach',  path: '/coach',     icon: BrainCircuit,    shortcut: 'C' },
-  { name: 'Timer',     path: '/timer',     icon: Timer,           shortcut: 'T' },
+  { name: 'Dashboard',    path: '/',             icon: LayoutDashboard, shortcut: 'D' },
+  { name: 'Analytics',    path: '/analytics',    icon: BarChart2,       shortcut: 'A' },
+  { name: 'Goals',        path: '/goals',        icon: Target,          shortcut: 'G' },
+  { name: 'Achievements', path: '/achievements', icon: Trophy,          shortcut: 'V' },
+  { name: 'AI Coach',     path: '/coach',        icon: BrainCircuit,    shortcut: 'C' },
+  { name: 'Timer',        path: '/timer',        icon: Timer,           shortcut: 'T' },
 ];
 
 /**
@@ -57,7 +58,7 @@ export default function Sidebar() {
   const xpInLevel = xp % 100;
   const progress  = xpInLevel;
 
-  // Keyboard shortcuts: 1–5 to navigate pages (only when not typing in an input)
+  // Keyboard shortcuts: navigate pages (only when not typing in an input)
   useEffect(() => {
     const handler = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -91,7 +92,7 @@ export default function Sidebar() {
       <div className="mx-4 mb-4" style={{ height: '1px', background: 'var(--color-border)' }} />
 
       {/* Nav */}
-      <nav className="flex flex-col gap-0.5 px-3 flex-1">
+      <nav className="flex flex-col gap-0.5 px-3 flex-1 overflow-y-auto">
         {navItems.map(item => (
           <NavLink key={item.name} to={item.path} end={item.path === '/'} className="block"
             onClick={playNavClick}>
