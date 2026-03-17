@@ -13,7 +13,7 @@ import { Settings, X, Zap, Sparkles, ChevronDown } from 'lucide-react';
 import ThemeToggle from './components/ThemeToggle';
 import ThemeColorSync from './components/ThemeColorSync';
 
-// ── SlateMark — same three-slab SVG used in Sidebar ──────────────────────────
+// ── SlateMark — three-slab logo ───────────────────────────────────────────────
 function SlateMark({ size = 24 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,12 +37,9 @@ function SlateMark({ size = 24 }) {
       </defs>
       <rect width="30" height="30" rx="8" fill="url(#mob-sm-bg)"/>
       <rect x="0" y="0" width="30" height="1" rx="0.5" fill="white" opacity="0.08"/>
-      {/* Top slab */}
       <rect x="5"  y="7"    width="20" height="5"   rx="2.5"  fill="url(#mob-sm-g1)"/>
       <rect x="5"  y="7"    width="20" height="1"   rx="0.5"  fill="white" opacity="0.14"/>
-      {/* Middle slab */}
       <rect x="7"  y="14"   width="16" height="4.5" rx="2.25" fill="url(#mob-sm-g2)"/>
-      {/* Bottom slab */}
       <rect x="9"  y="20.5" width="12" height="4"   rx="2"    fill="url(#mob-sm-g3)"/>
     </svg>
   );
@@ -312,46 +309,74 @@ function MobileTopBar() {
   };
 
   return (
+    /*
+      Two-layer approach:
+      1. The solid + frosted background layer — covers content scrolling behind it.
+         Uses var(--color-background) so it matches both light (#eceae6) and dark (#0c0a08).
+      2. A gradient fade layer at the bottom so the cutoff isn't a hard line.
+    */
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0,
-      height: '52px',
       zIndex: 100,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingRight: '16px',
-      paddingLeft: '16px',
-      background: 'transparent',
       pointerEvents: 'none',
     }}>
-      {/* ── Left: logo + wordmark ── */}
-      <motion.div
-        initial={{ opacity: 0, x: -6 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        style={{
-          pointerEvents: 'auto',
-          display: 'flex', alignItems: 'center', gap: '8px',
-        }}
-      >
-        <SlateMark size={26} />
-        <span style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: '16px',
-          fontWeight: 700,
-          letterSpacing: '-0.03em',
-          color: 'var(--color-warm-white)',
-          lineHeight: 1,
-        }}>
-          Slate
-        </span>
-      </motion.div>
+      {/* Solid background strip — the actual bar */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: '60px',
+        background: 'var(--color-background)',
+        // Subtle backdrop blur for a polished feel
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }} />
 
-      {/* ── Right: Demo + Settings ── */}
-      <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <TestPanel onTrigger={handleTrigger} />
-        <SettingsButton />
+      {/* Gradient fade below the bar so the edge dissolves naturally */}
+      <div style={{
+        position: 'absolute',
+        top: '60px', left: 0, right: 0,
+        height: '16px',
+        background: 'linear-gradient(to bottom, var(--color-background), transparent)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Content row — logo left, actions right */}
+      <div style={{
+        position: 'relative',
+        height: '60px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        pointerEvents: 'auto',
+      }}>
+        {/* Logo + wordmark */}
+        <motion.div
+          initial={{ opacity: 0, x: -6 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <SlateMark size={26} />
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '16px',
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            color: 'var(--color-warm-white)',
+            lineHeight: 1,
+          }}>
+            Slate
+          </span>
+        </motion.div>
+
+        {/* Demo + Settings */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <TestPanel onTrigger={handleTrigger} />
+          <SettingsButton />
+        </div>
       </div>
     </div>
   );
@@ -379,7 +404,8 @@ function AppInner() {
           <div style={{
             maxWidth: '1100px',
             margin: '0 auto',
-            padding: isMobile ? '60px 16px 120px 16px' : '28px 32px 48px 32px',
+            // Extra top padding accounts for the taller bar (60px solid + 16px fade)
+            padding: isMobile ? '76px 16px 120px 16px' : '28px 32px 48px 32px',
           }}>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
