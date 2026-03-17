@@ -38,7 +38,7 @@ const TEST_ACHIEVEMENTS = [
 function TestPanel({ onTrigger }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative md:block hidden">
       <motion.button
         onClick={() => setOpen(o => !o)}
         whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
