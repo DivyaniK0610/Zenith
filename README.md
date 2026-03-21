@@ -20,7 +20,7 @@ So when you ask "what should I focus on today?", it knows you've missed your mor
 - GitHub-style contribution heatmap with per-habit breakdown
 - Pomodoro focus timer with ambient sounds and automatic habit logging
 - Goal grouping — link habits to bigger objectives like "Get fit"
-- Achievement system with shareable 1080×1080 PNG cards (Instagram-ready)
+- Achievement system with shareable 1920×1080 PNG cards (Instagram-ready)
 - RAG AI Coach powered by Groq — llama-3.1-8b-instant, responses under 500ms
 - Light and dark theme, PWA-ready, fully mobile responsive
 
