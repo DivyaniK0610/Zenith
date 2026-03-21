@@ -2,24 +2,27 @@
 
 > *Build streaks. Earn XP. Get coached by AI that actually knows your data.*
 
-Built for a hackathon in ~48 hours. Slate is a habit tracker that combines gamification, analytics, and a RAG-powered AI coach so you stop getting generic advice and start getting coached on *your* actual data.
+Built for Code Canvas hackathon at Medicaps University. Slate is a habit tracker that combines gamification, analytics, and a RAG-powered AI coach — so instead of generic productivity advice, you get coached on your actual data.
 
 ---
 
 ## What it does
 
-You log habits daily. Every completion earns XP, builds streaks, and levels you up. The AI coach isn't just a chatbot — it embeds your habit history into vectors and uses similarity search to pull your actual context before generating a response. So when you ask "what should I focus on today?", it knows you've missed your morning run 3 days in a row and your sleep average is down.
+You log habits daily. Every completion earns XP, builds streaks, and levels you up. The AI coach isn't just a chatbot — it embeds your habit history into vectors and uses cosine similarity search to pull your actual context before generating a response.
 
-**Core features:**
-- Habit tracking with boolean and numeric types
-- Streak system with milestone bonuses (7d, 30d, 100d)
-- Level-up system (100 XP per level) with animated overlays
-- GitHub-style contribution heatmap
-- Pomodoro focus timer with ambient sounds and session logging
-- Goal grouping — link habits to bigger objectives
-- Achievement system with shareable Instagram Story cards
-- RAG AI Coach powered by Groq (llama-3.1-8b-instant, <500ms responses)
-- Light/dark theme, PWA-ready, fully mobile responsive
+So when you ask "what should I focus on today?", it knows you've missed your morning run 3 days in a row and your sleep average is down. It responds with your habit names and streak numbers — not generic advice.
+
+**Core features**
+
+- Habit tracking — boolean (yes/no) and numeric (measure a quantity) types
+- Streak system with milestone bonuses at 7, 30, and 100 days
+- XP + level-up system (100 XP per level) with animated overlays
+- GitHub-style contribution heatmap with per-habit breakdown
+- Pomodoro focus timer with ambient sounds and automatic habit logging
+- Goal grouping — link habits to bigger objectives like "Get fit"
+- Achievement system with shareable 1080×1080 PNG cards (Instagram-ready)
+- RAG AI Coach powered by Groq — llama-3.1-8b-instant, responses under 500ms
+- Light and dark theme, PWA-ready, fully mobile responsive
 
 ---
 
@@ -37,19 +40,38 @@ You log habits daily. Every completion earns XP, builds streaks, and levels you 
 
 ## How the AI coach works
 
-This was the most interesting part to build. Standard chatbots just take your message and respond. Ours does this:
-
-1. Your habit logs get converted to 384-dimensional embedding vectors
-2. Vectors are stored in Supabase using pgvector
-3. When you send a message, it gets independently embedded
-4. pgvector runs a cosine similarity search and returns your most relevant context chunks
-5. That context gets injected into the Groq prompt *before* your message
-6. The model responds with specific numbers, habit names, and streak data — not generic advice
+Standard chatbots take your message and respond with whatever their training data says. Ours does this instead:
 
 ```
-User query → embed → pgvector similarity search → top-3 context chunks
-→ inject into Groq prompt → llama-3.1-8b-instant → response in <500ms
+User query
+  → embed with all-MiniLM-L6-v2 (384-dim vector)
+  → pgvector cosine similarity search against stored habit context
+  → top-3 relevant context chunks retrieved
+  → injected into Groq system prompt before the user message
+  → llama-3.1-8b-instant generates response with your actual data
+  → reply in <500ms
 ```
+
+Step by step:
+
+1. When you log habits, a natural-language summary of your activity gets embedded into a 384-dimensional vector and stored in Supabase via pgvector
+2. When you send a message to the coach, that message gets independently embedded
+3. pgvector runs a cosine similarity search — `1 - (embedding <=> query_embedding)` — and returns the most relevant chunks of your habit history
+4. Those chunks are injected into the prompt before your message so the model has real context
+5. The model is instructed to always reference specific habit names, streak numbers, and XP — never give generic advice
+
+This means the coach response quality improves as you use the app more, because your embedding context grows richer.
+
+---
+
+## Gamification engine
+
+XP and streak logic lives entirely in `backend/app/services/gamification.py`.
+
+- Base XP per completed habit: **10**
+- Milestone bonuses: **+50 XP** at 7 days, **+200 XP** at 30 days, **+1000 XP** at 100 days
+- Level threshold: **100 XP per level**
+- Streaks are calculated by walking backwards through `habit_logs` to find consecutive days — no stored counter that can get out of sync
 
 ---
 
@@ -60,7 +82,8 @@ User query → embed → pgvector similarity search → top-3 context chunks
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # add SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY
+cp .env.example .env
+# fill in: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY
 uvicorn main:app --reload
 ```
 
@@ -68,28 +91,56 @@ uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
-cp .env.example .env  # set VITE_API_URL=http://localhost:8000
+cp .env.example .env
+# set: VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
-You'll need a Supabase project with pgvector enabled and the schema from `backend/scripts/` applied. Full setup in the wiki.
+You need a Supabase project with pgvector enabled and the schema from `backend/scripts/` applied.
 
 ---
 
-## Team
+## Project structure
 
-| Name | What I built |
-|---|---|
-| **Rutwik** | FastAPI backend, gamification engine, RAG pipeline, LLM integration, embeddings |
-| **Sahil** | Supabase schema, pgvector setup, REST endpoints, RLS policies |
-| **Divyani** | React frontend, Zustand state, animations, AI chat UI, analytics, timer |
+```
+slate/
+├── backend/
+│   ├── main.py                  # FastAPI app, routers, CORS
+│   ├── app/
+│   │   ├── api/                 # Route handlers (habits, chat, game, goals, timer, achievements)
+│   │   ├── db/                  # Supabase client, Pydantic schemas
+│   │   └── services/            # Business logic (gamification, embedding, llm_engine, analytics)
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── pages/               # Dashboard, Analytics, AICoach, Timer, Goals, Achievements
+    │   ├── components/          # HabitCard, XPBar, AchievementOverlay, AddHabitModal, ...
+    │   ├── store/               # Zustand store (habitStore)
+    │   ├── api/                 # Axios client + habits API
+    │   └── hooks/               # useSound, useHabits
+    └── public/                  # PWA manifest, service worker, icons
+```
 
 ---
 
 ## Deployment
 
-- Frontend → Vercel
-- Backend → Render
-- DB → Supabase (managed Postgres + pgvector)
+| Service | Platform |
+|---|---|
+| Frontend | Vercel |
+| Backend | Render |
+| Database | Supabase (managed Postgres + pgvector) |
 
-Live at: `https://zenith-eta-ruddy.vercel.app`
+Live: **https://zenith-eta-ruddy.vercel.app**
+
+---
+
+## Team
+
+| Name | Responsibility |
+|---|---|
+| **Rutwik** | FastAPI backend, gamification engine, RAG pipeline, LLM integration, embeddings |
+| **Sahil** | Supabase schema design, pgvector setup, REST endpoints, RLS policies |
+| **Divyani** | React frontend, Zustand state management, animations, AI chat UI, analytics, timer |
+
+---
