@@ -38,7 +38,6 @@ async def startup_event():
             lambda: __import__('app.services.embedding', fromlist=['_get_model'])._get_model()
         )
     )
-# ────────────────────────────────────────────────────────────────────────
 
 from fastapi.exceptions import HTTPException, RequestValidationError
 from app.api.error_handlers import safe_http_exception_handler, unhandled_exception_handler

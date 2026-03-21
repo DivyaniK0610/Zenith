@@ -9,19 +9,15 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
 # Schemas
-# ---------------------------------------------------------------------------
 
 class AchievementUnlock(BaseModel):
     user_id:        str  = Field(..., description="UUID of the user")
     achievement_id: str  = Field(..., description="Slug of the achievement, e.g. 'streak_7'")
 
 
-# ---------------------------------------------------------------------------
 # GET  /api/v1/achievements/:user_id
 # Returns all earned achievement records for this user
-# ---------------------------------------------------------------------------
 
 @router.get("/{user_id}", status_code=status.HTTP_200_OK)
 async def get_achievements(user_id: str):
@@ -49,11 +45,9 @@ async def get_achievements(user_id: str):
         )
 
 
-# ---------------------------------------------------------------------------
 # POST /api/v1/achievements/unlock
 # Idempotent — safe to call multiple times for the same achievement.
 # Uses upsert so a second unlock of the same badge is a no-op.
-# ---------------------------------------------------------------------------
 
 @router.post("/unlock", status_code=status.HTTP_200_OK)
 async def unlock_achievement(payload: AchievementUnlock):
@@ -88,11 +82,9 @@ async def unlock_achievement(payload: AchievementUnlock):
         )
 
 
-# ---------------------------------------------------------------------------
 # POST /api/v1/achievements/sync
 # Bulk-upsert all achievement IDs that the client already knows are earned.
 # Called once on first page load to back-fill pre-existing progress.
-# ---------------------------------------------------------------------------
 
 class SyncPayload(BaseModel):
     user_id:         str        = Field(..., description="UUID of the user")

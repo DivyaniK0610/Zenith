@@ -6,16 +6,12 @@ import json
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
 # Client — one instance, reused across requests
-# ---------------------------------------------------------------------------
 
 _groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
-# ---------------------------------------------------------------------------
 # System prompts
-# ---------------------------------------------------------------------------
 
 COACH_SYSTEM_PROMPT = """You are Zenith, a brutally honest, high-performance AI productivity coach.
 You have access to the user's real habit data. Use it.
@@ -44,9 +40,7 @@ One sentence about their weakest habit or biggest consistency gap.
 ## Your move tomorrow
 One concrete, specific action. Start with a verb. No vague advice."""
 
-# ---------------------------------------------------------------------------
 # Core chat completion — with RAG context injection
-# ---------------------------------------------------------------------------
 
 async def chat_with_coach(user_id: str, user_message: str) -> dict:
     context = await retrieve_relevant_context(user_id, user_message, top_k=3)
@@ -93,9 +87,7 @@ User's message: {user_message}"""
         raise
 
 
-# ---------------------------------------------------------------------------
 # Quick motivational cue — fired after a habit is logged
-# ---------------------------------------------------------------------------
 
 async def generate_quick_cue(user_id: str, habit_title: str, gamification_result: dict) -> str:
     streak  = gamification_result.get('current_streak', 0)
@@ -132,10 +124,7 @@ async def generate_quick_cue(user_id: str, habit_title: str, gamification_result
         raise
 
 
-
-# ---------------------------------------------------------------------------
 # Deep habit analysis — for the Analytics page
-# ---------------------------------------------------------------------------
 
 async def analyze_habits(user_id: str) -> dict:
     try:

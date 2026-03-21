@@ -224,7 +224,7 @@ function AmbientPicker({ current, onSelect, volume, onVolumeChange }) {
               overflow:'hidden',
             }}>
             <div style={{ position:'absolute', inset:'0 0 auto 0', height:'1px', background:'linear-gradient(90deg,transparent,rgba(184,115,51,0.4),transparent)' }}/>
-            
+
             <div style={{ padding:'10px 12px 6px' }}>
               <div style={{ fontSize:'9px', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--color-text-3)', marginBottom:'8px' }}>
                 Ambient Sounds

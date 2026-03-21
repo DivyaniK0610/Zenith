@@ -17,4 +17,3 @@ if not url or not key:
 supabase: Client = create_client(url, key)
 
 
-

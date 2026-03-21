@@ -12,9 +12,7 @@ import apiClient from '../api/client';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Achievement Definitions
-// ─────────────────────────────────────────────────────────────────────────────
 export const ACHIEVEMENT_DEFS = [
   // ── Streaks ────────────────────────────────────────────────────────────────
   {
@@ -218,9 +216,7 @@ export const ACHIEVEMENT_DEFS = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
 // API helpers
-// ─────────────────────────────────────────────────────────────────────────────
 async function fetchEarnedFromDB(userId) {
   const res = await apiClient.get(`/api/v1/achievements/${userId}`);
   return res.data?.data || [];
@@ -241,9 +237,7 @@ async function syncAllToDB(userId, achievementIds) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Canvas share-card generator
-// ─────────────────────────────────────────────────────────────────────────────
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -533,9 +527,7 @@ export function generateShareCard(achievement, userStats) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Share Modal
-// ─────────────────────────────────────────────────────────────────────────────
 function ShareModal({ achievement, userStats, onClose }) {
   const [imageUrl, setImageUrl]       = useState(null);
   const [generating, setGenerating]   = useState(true);
@@ -660,9 +652,7 @@ function ShareModal({ achievement, userStats, onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Achievement Unlock Overlay — with SOUNDS
-// ─────────────────────────────────────────────────────────────────────────────
 export function AchievementUnlockOverlay({ achievement, onClose, onShare, userStats }) {
   const { playLevelUp, playStreak, playSuccess } = useZenithSounds();
 
@@ -815,9 +805,7 @@ export function AchievementUnlockOverlay({ achievement, onClose, onShare, userSt
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Achievement Card
-// ─────────────────────────────────────────────────────────────────────────────
 function AchievementCard({ def, earned, earnedAt, onShare, delay = 0 }) {
   const Icon    = def.icon;
   const [hov, setHov] = useState(false);
@@ -907,9 +895,7 @@ function AchievementCard({ def, earned, earnedAt, onShare, delay = 0 }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Page
-// ─────────────────────────────────────────────────────────────────────────────
 const CATEGORIES = ['All', 'Streaks', 'Levels', 'Habits', 'XP', 'Special'];
 
 export default function Achievements() {

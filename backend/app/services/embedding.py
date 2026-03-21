@@ -4,9 +4,7 @@ import asyncio
 from functools import lru_cache
 from datetime import date
 
-# ---------------------------------------------------------------------------
 # Model — loaded once at import time, reused across all requests
-# ---------------------------------------------------------------------------
 
 @lru_cache(maxsize=1)
 def _get_model() -> SentenceTransformer:
@@ -24,9 +22,7 @@ def embed_text(text: str) -> list[float]:
     return vector.tolist()
 
 
-# ---------------------------------------------------------------------------
 # Build a rich text snapshot of a user's recent habit activity
-# ---------------------------------------------------------------------------
 
 def _build_habit_context_string(
     habits: list[dict],
@@ -81,9 +77,7 @@ def _build_habit_context_string(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Upsert a user context embedding into Supabase pgvector
-# ---------------------------------------------------------------------------
 
 async def upsert_user_context_embedding(user_id: str) -> dict:
     """
@@ -134,9 +128,7 @@ async def upsert_user_context_embedding(user_id: str) -> dict:
     return {"context": context_text, "embedding_dim": len(vector)}
 
 
-# ---------------------------------------------------------------------------
 # Retrieve the most relevant context chunks for a user query (RAG)
-# ---------------------------------------------------------------------------
 
 async def retrieve_relevant_context(user_id: str, query: str, top_k: int = 3) -> str:
     """

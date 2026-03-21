@@ -9,9 +9,7 @@ router = APIRouter(
     tags=["AI Coach"]
 )
 
-# ---------------------------------------------------------------------------
 # Schemas
-# ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     user_id: str = Field(..., description="UUID of the user")
@@ -20,9 +18,7 @@ class ChatRequest(BaseModel):
 class EmbedRequest(BaseModel):
     user_id: str = Field(..., description="UUID of the user to embed context for")
 
-# ---------------------------------------------------------------------------
 # Endpoints
-# ---------------------------------------------------------------------------
 
 @router.get("/history/{user_id}", status_code=status.HTTP_200_OK)
 async def get_chat_history(user_id: str, limit: int = 100):

@@ -18,18 +18,14 @@ import { demoTriggerCallbacks } from '../App';
 
 const USER_ID = '741601ad-1b7c-477e-8be0-c76363f6ebda';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Default reminders — pure UI state, no backend needed for demo
-// ─────────────────────────────────────────────────────────────────────────────
 const DEFAULT_REMINDERS = [
   { id: 'r1', label: 'Morning check-in',  time: '08:00 AM', enabled: true  },
   { id: 'r2', label: 'Log habits',        time: '09:00 PM', enabled: true  },
   { id: 'r3', label: 'Weekly review',     time: 'Sun 7:00 PM', enabled: false },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Test achievement panel (demo only)
-// ─────────────────────────────────────────────────────────────────────────────
 const TEST_ACHIEVEMENTS = [
   { label: '⚡ Level Up overlay',    data: { type: 'level_up', level: 5, old_level: 4, total_xp: 450, message: 'You reached Level 5!' } },
   { label: '🔥 7-day streak reward', data: { type: 'streak', current_streak: 7,  xp_gained: 60,  milestone_bonus: 50,  message: 'Consistency is the only cheat code.' } },
@@ -111,9 +107,7 @@ function SkeletonCard() {
   return <div className="h-16 rounded-2xl animate-pulse" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }} />;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Section divider with collapsible toggle
-// ─────────────────────────────────────────────────────────────────────────────
 function SectionToggle({ icon: Icon, label, count, open, onToggle, accent = 'var(--color-text-3)' }) {
   return (
     <button
@@ -142,9 +136,7 @@ function SectionToggle({ icon: Icon, label, count, open, onToggle, accent = 'var
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Tasks section
-// ─────────────────────────────────────────────────────────────────────────────
 function TasksSection({ onSetReminder }) {
   const [tasks, setTasks] = useState(() => {
       try { return JSON.parse(localStorage.getItem('zenith_tasks')) || []; }
@@ -309,9 +301,7 @@ function TasksSection({ onSetReminder }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Reminders section
-// ─────────────────────────────────────────────────────────────────────────────
 function RemindersSection() {
   const [reminders, setReminders] = useState(() => {
     try { return JSON.parse(localStorage.getItem('zenith_reminders')) || DEFAULT_REMINDERS; }
@@ -457,9 +447,7 @@ function RemindersSection() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Right panel stat block
-// ─────────────────────────────────────────────────────────────────────────────
 function StatBlock({ icon: Icon, label, value, accent, accentBg, accentBorder, iconFill }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl"
@@ -480,9 +468,7 @@ function StatBlock({ icon: Icon, label, value, accent, accentBg, accentBorder, i
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Right panel
-// ─────────────────────────────────────────────────────────────────────────────
 function RightPanel({ habits, userStats, completedToday, allDone, completedCount }) {
   const activeCount   = habits.filter(h => h.status !== 'paused').length;
   const completionPct = activeCount > 0 ? Math.round((completedCount / activeCount) * 100) : 0;
@@ -579,9 +565,7 @@ function RightPanel({ habits, userStats, completedToday, allDone, completedCount
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Main Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { habits, isLoading, error, loadHabits, userStats, completedToday, fetchArchivedHabits } = useHabitStore();
 
@@ -748,7 +732,7 @@ export default function Dashboard() {
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       gap: '6px', padding: '8px', borderRadius: '12px', cursor: 'pointer',
-                      background: 'transparent', 
+                      background: 'transparent',
                       color: 'var(--color-text-3)', fontSize: '11px', fontWeight: 600,
                       transition: 'all 0.15s',
                     }}
