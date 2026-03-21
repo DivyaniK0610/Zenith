@@ -2,17 +2,13 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Constants
-// ─────────────────────────────────────────────────────────────────────────────
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 const HOURS  = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MINS   = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Drum roller — a single scrollable column of values
-// ─────────────────────────────────────────────────────────────────────────────
 const ITEM_H = 36;
 const VISIBLE = 5;
 
@@ -125,9 +121,7 @@ function DrumRoller({ values, selected, onChange, width = 64 }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Time picker — hour / minute / AM/PM drum rollers
-// ─────────────────────────────────────────────────────────────────────────────
 function TimePicker({ value, onChange }) {
   const [h, setH]       = useState(value?.h   || '08');
   const [m, setM]       = useState(value?.m   || '00');
@@ -148,9 +142,7 @@ function TimePicker({ value, onChange }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Calendar — mini month grid
-// ─────────────────────────────────────────────────────────────────────────────
 function Calendar({ value, onChange }) {
   const today        = new Date();
   const [viewYear,  setViewYear]  = useState(value?.year  || today.getFullYear());
@@ -241,13 +233,11 @@ function Calendar({ value, onChange }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Main export — ZenithDateTimePicker
 //
 // Props:
 //   onConfirm(displayString) — called with a formatted string like "Mar 17 · 08:00 AM"
 //   onCancel()
-// ─────────────────────────────────────────────────────────────────────────────
 export default function ZenithDateTimePicker({ onConfirm, onCancel }) {
   const today = new Date();
 

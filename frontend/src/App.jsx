@@ -816,7 +816,6 @@ function LegacyOverlayWithShare({ data, userStats, onClose, onShare }) {
       clearTimeout(dismissTimer);
     };
   }, [onClose]);
-  // ────────────────────────────────────────────────────────────────────────────
 
   const isLevelUp  = data.type === 'level_up';
   const color      = isLevelUp ? '#c9813a' : '#e07a30';

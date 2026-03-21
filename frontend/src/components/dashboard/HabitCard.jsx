@@ -496,7 +496,7 @@ export default function HabitCard({ habit, onAchievement }) {
                     </>,
                     document.body
                   )}
-                  
+
                 </motion.div>
               )}
             </AnimatePresence>

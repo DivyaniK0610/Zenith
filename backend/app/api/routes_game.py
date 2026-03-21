@@ -59,7 +59,7 @@ async def get_leaderboard(limit: int = Query(default=10, le=50)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve leaderboard: {str(e)}"
         )
-    
+
 from app.services.analytics import get_heatmap_matrix, get_daily_completion_rate
 
 @router.get("/heatmap/{user_id}", status_code=status.HTTP_200_OK)

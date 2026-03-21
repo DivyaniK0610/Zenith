@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Query
 from app.db.schemas import HabitCreate, HabitLogCreate
 from app.services.llm_engine import parse_habit_from_description
 from app.db.supabase import supabase
-# PHASE 3: Importing the new gamification engine
 from app.services.gamification import process_habit_log
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -35,7 +34,7 @@ async def create_habit(habit: HabitCreate):
     try:
         habit_dict = habit.model_dump()
         response = supabase.table('habits').insert(habit_dict).execute()
-        
+
         return {
             "message": "Habit created successfully",
             "data": response.data[0]
@@ -59,7 +58,7 @@ async def get_all_habits(user_id: str = Query(..., description="UUID of the user
             .neq('status', 'archived')
             .execute()
         )
-        
+
         return {
             "message": "Habits retrieved successfully",
             "data": response.data
@@ -78,18 +77,15 @@ async def log_habit(habit_log: HabitLogCreate):
     try:
         log_dict = habit_log.model_dump()
         log_dict['log_date'] = log_dict['log_date'].isoformat()
-        
-        # A. Fetch user_id
+
         habit_info = supabase.table('habits').select('user_id').eq('id', habit_log.habit_id).single().execute()
         if not habit_info.data:
             raise HTTPException(status_code=404, detail="Habit not found")
-        
+
         user_id = habit_info.data['user_id']
 
-        # B. Insert the log
         response = supabase.table('habit_logs').insert(log_dict).execute()
-        
-        # C. TRIGGER THE GAMIFICATION (Matching the imported name)
+
         game_stats = await process_habit_log(
         habit_id=str(habit_log.habit_id),
         user_id=user_id,
@@ -97,11 +93,11 @@ async def log_habit(habit_log: HabitLogCreate):
         completed=habit_log.completed,
         metric_value=habit_log.metric_value
     )
-        
+
         return {
             "message": "Habit logged and XP updated",
             "data": response.data[0],
-            "gamification": game_stats 
+            "gamification": game_stats
         }
 
     except HTTPException:
@@ -110,7 +106,7 @@ async def log_habit(habit_log: HabitLogCreate):
         if "duplicate key value" in str(e):
             raise HTTPException(status_code=409, detail="Log already exists for this date.")
         raise HTTPException(status_code=500, detail=f"Failed to log habit: {str(e)}")
-    
+
 @router.get("/logs/today", status_code=status.HTTP_200_OK)
 async def get_today_logs(
     user_id: str = Query(...),
@@ -149,7 +145,7 @@ async def delete_habit(habit_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete habit: {str(e)}"
         )
-    
+
 class HabitStatusUpdate(BaseModel):
     status: Optional[str] = None  # 'archived' | 'paused' | 'active'
 
@@ -165,7 +161,7 @@ async def update_habit_status(habit_id: str, update: HabitStatusUpdate):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update habit: {str(e)}"
         )
-    
+
 @router.get("/archived", status_code=status.HTTP_200_OK)
 async def get_archived_habits(user_id: str = Query(...)):
     try:

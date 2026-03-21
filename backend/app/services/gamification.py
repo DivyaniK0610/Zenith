@@ -3,9 +3,7 @@ from typing import Optional
 from app.db.supabase import supabase
 
 
-# ---------------------------------------------------------------------------
 # XP & Level constants  (tune these freely)
-# ---------------------------------------------------------------------------
 
 XP_STANDARD_LOG = 10     # base XP for any completed habit log
 XP_PER_LEVEL    = 100    # XP needed to advance one level
@@ -17,9 +15,7 @@ STREAK_BONUSES: dict[int, int] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Pure helpers  (no I/O)
-# ---------------------------------------------------------------------------
 
 def _calculate_level(total_xp: int) -> int:
     """Level is 1-indexed: Level 1 starts at 0 XP."""
@@ -55,9 +51,7 @@ def _build_message(
     return "✅ Habit logged. +10 XP. Small wins compound."
 
 
-# ---------------------------------------------------------------------------
 # DB helpers  (Supabase calls)
-# ---------------------------------------------------------------------------
 
 async def _fetch_streak(habit_id: str, up_to_date: date) -> int:
     """
@@ -159,9 +153,7 @@ async def _update_user_stats(
     }
 
 
-# ---------------------------------------------------------------------------
 # Public entry point — call this from routes_habits.py after inserting a log
-# ---------------------------------------------------------------------------
 
 async def process_habit_log(
     habit_id:     str,
